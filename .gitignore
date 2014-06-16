@@ -1,0 +1,60 @@
+*.py[cod]
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Translations
+*.mo
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# emacs
+*~
+\#*#
+.#*
+
+# my development cruft
+/src/paella-client/debian/python-paella-client*
+/src/paella-client_*
+/src/paella-client/debian/files
+/src/*.deb
+
+# compiled sls files
+*.slsc
+
+# vagrant stuff
+.vagrant
+
+/cache
+/cache-bootstrap.tar.gz
+/vagrant/debrepos
+/vagrant/salt/roots/pillar.local
+/vagrant/paella
+/vagrant/cache
+

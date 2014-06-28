@@ -2,6 +2,7 @@ from sqlalchemy import Sequence, Column, ForeignKey
 
 # column types
 from sqlalchemy import Integer, String, Unicode
+from sqlalchemy import BigInteger
 from sqlalchemy import Boolean, Date, LargeBinary
 from sqlalchemy import PickleType
 from sqlalchemy import Enum
@@ -67,7 +68,7 @@ class TumblrPhotoUrl(Base):
 
 class TumblrPost(Base):
     __tablename__ = 'tumblr_posts'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     blog_name = Column(Unicode(200))
     post_url = Column(Unicode(500))
     type = Column(Unicode(50))
@@ -79,6 +80,8 @@ class TumblrPost(Base):
     source_title = Column(Unicode(500))
     liked = Column(Boolean)
     content = Column(PickleType)
+
+#class TumblrBlog(Base):
     
     
 #######################################################

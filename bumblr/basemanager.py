@@ -9,7 +9,47 @@ POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
             'date', 'format', 'liked']
 
 
-class TumblrPostManager(object):
+class DashboardManager(object):
+    def __init__(self, session):
+        self.session = session
+        self.client = None
+        self.limit = 50
+        
+        
+    def set_client(self, client):
+        self.client = client
+
+    def _query(self):
+        return self.session.query(TumblrPost)
+    
+    def get(self, id):
+        return self.session.query(TumblrPost).get(id)
+    
+    def add_post(self, post):
+        with transaction.manager:
+            p = TumblrPost()
+            for key in POSTKEYS:
+                setattr(p, key, post[key])
+            if False:
+                for key in ['source_url', 'source_title']:
+                    if key in post:
+                        setattr(p, key, post[key])
+            p.content = post
+            self.session.add(p)
+        return self.session.merge(p)
+
+    def get_posts(self):
+        posts = self.client.dashboard()['posts']
+        total_posts = len(posts)
+        while posts:
+            post = posts.pop()
+            if self.get(post['id']) is None:
+                self.add_post(post)
+                print "added post from %s" % post['blog_name']
+            print "%d processed." % (total_posts - len(posts))
+            
+            
+class BaseBlogManager(object):
     def __init__(self, session):
         self.session = session
         self.client = None

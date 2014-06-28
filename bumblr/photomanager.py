@@ -59,8 +59,8 @@ class TumblrPhotoManager(object):
             else:
                 msg = "Tumblr returned %d for %s" 
                 raise RuntimeError, msg % (r.status_code, url)
-            
-        with file(filename, 'wb') as output:
-            for chunk in r.iter_content(chunk_size=512):
-                output.write(chunk)
+        else:
+            with file(filename, 'wb') as output:
+                for chunk in r.iter_content(chunk_size=512):
+                    output.write(chunk)
         

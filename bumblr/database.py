@@ -64,7 +64,7 @@ class TumblrPhotoUrl(Base):
     __tablename__ = 'tumblr_photo_urls'
     id = Column(Integer, primary_key=True)
     url = Column(Unicode(500), unique=True)
-
+    status = Column(Integer)
 
 class TumblrPost(Base):
     __tablename__ = 'tumblr_posts'
@@ -82,6 +82,13 @@ class TumblrPost(Base):
     content = Column(PickleType)
 
 #class TumblrBlog(Base):
+
+class TumblrPostPhoto(Base):
+    __tablename__ = 'tumblr_post_photos'
+    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
+                     primary_key=True)
+    photo_id = Column(BigInteger, ForeignKey('tumblr_photo_urls.id'),
+                          primary_key=True)
     
     
 #######################################################

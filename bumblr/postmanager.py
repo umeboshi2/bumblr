@@ -37,9 +37,20 @@ class TumblrPostManager(object):
     def get(self, id):
         return self.session.query(TumblrPost).get(id)
 
-    def get_all_ids(self):
-        q = self.session.query(TumblrPost.id)
+    def get_all_ids_query(self, with_blog_names=False, blog=None):
+        qf = self.session.query
+        if with_blog_names:
+            q = qf(TumblrPost.id, TumblrPost.blog_name)
+        else:
+            q = qf(TumblrPost.id)
+        q = q.order_by(TumblrPost.id)
+        return q
+
+    def get_all_ids(self, with_blog_names=False, blog=None):
+        q = self.get_all_ids_query(with_blog_names=with_blog_names,
+                                   blog=blog)
         return q.all()
+    
     
     def add_post(self, post):
         with transaction.manager:
@@ -65,7 +76,8 @@ class TumblrPostManager(object):
         total_post_count = posts['total_posts']
         if total_desired is not None:
             if total_desired > total_post_count:
-                raise RuntimeError, 'too many posts desired.'
+                print 'too many posts desired.'
+                total_desired = total_post_count
             total_post_count = total_desired
         all_posts = list()
         these_posts = posts['posts']
@@ -90,7 +102,7 @@ class TumblrPostManager(object):
             if self.get(post['id']) is None:
                 self.add_post(post)
             if not len(all_posts) % 100:
-                print "%d posts remaining." % len(all_posts)
+                print "%s: %d posts remaining." % (blogname, len(all_posts))
 
     def update_photos(self, post_id, post=None):
         if post is None:
@@ -114,6 +126,8 @@ class TumblrPostManager(object):
                     tpp.photo_id = p.id
                     self.session.add(tpp)
                 print "Added relation", post.id, p.id
+            self.photos.update_photo(p.id)
+            
                 
             
             

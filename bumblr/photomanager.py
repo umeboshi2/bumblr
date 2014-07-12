@@ -70,7 +70,7 @@ class TumblrPhotoManager(object):
                 print "%s forbidden" % url
             elif r.status_code == 404:
                 print "%s not available" % url
-            elif r.status_code == 400:
+            elif r.status_code in [400, 500]:
                 print "%s bad query" % url
             else:
                 msg = "Tumblr returned %d for %s" 
@@ -79,14 +79,24 @@ class TumblrPhotoManager(object):
             with self.repos.open_file(basename, 'wb') as output:
                 for chunk in r.iter_content(chunk_size=512):
                     output.write(chunk)
+        #with transaction.manager:
+        #    dbobj.status = r.status_code
+        #    self.session.add(dbobj)
         with transaction.manager:
-            dbobj.status = r.status_code
-            self.session.add(dbobj)
+            turl = self.get_by_url(url)
+            if turl is None:
+                raise RuntimeError, "URL not in db"
+            turl.status = r.status_code
+            self.session.add(turl)
+            turl = self.get_by_url(url)
+            if turl.status != r.status_code:
+                raise RuntimeError, "DB didn't take it %s" % turl.id
+        return self.session.merge(turl)
             
 
-
-    def update_photo(self, url):
-        pass
+    def update_photo(self, url_id):
+        self._update_photo(url_id)
+        
 
     def _update_photo(self, url_id, localdir=None):
         turl = self.get(url_id)
@@ -113,7 +123,8 @@ class TumblrPhotoManager(object):
                 turl.status = 200
         
     def update_all_photos(self, localdir=None):
-        urls = self._query().all()
+        q = self._query().filter_by(status=None)
+        urls = q.all()
         params = [u.id for u in urls]
         pool = ThreadPool(processes=5)
         output = pool.map(self._update_photo, params)

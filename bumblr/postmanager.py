@@ -83,7 +83,8 @@ class TumblrPostManager(object):
         these_posts = posts['posts']
         these_posts = posts['posts']
         if len(these_posts) != limit:
-            raise RuntimeError, "Too few posts %d" % len(these_posts)
+            if len(these_posts) != total_post_count:
+                raise RuntimeError, "Too few posts %d" % len(these_posts)
         all_posts += posts['posts']
         while len(all_posts) < total_post_count:
             offset += limit

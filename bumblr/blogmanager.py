@@ -4,7 +4,7 @@ import transaction
 import requests
 
 from bumblr.database import TumblrPost, TumblrPostPhoto
-from bumblr.photomanager import TumblrPhotoManager
+from bumblr.postmanager import TumblrPostManager
 
 
 POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
@@ -20,7 +20,7 @@ def get_post_photo_urls(photos):
     return photolist
 
 
-class TumblrPostManager(object):
+class TumblrBlogManager(object):
     def __init__(self, session):
         self.session = session
         self.client = None
@@ -144,18 +144,8 @@ class TumblrPostManager(object):
                 self.add_post(post)
                 print "added post from %s" % post['blog_name']
             print "%d processed." % (total_posts - len(posts))
-
-    def get_my_likes(self, total=None):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
-
-    def get_blog_likes(self, blogname):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
-    
                 
     
     def update_posts(self, blogname):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
+        pass
     

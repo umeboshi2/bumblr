@@ -1,7 +1,7 @@
 from sqlalchemy import Sequence, Column, ForeignKey
 
 # column types
-from sqlalchemy import Integer, String, Unicode
+from sqlalchemy import Integer, String, Unicode, UnicodeText
 from sqlalchemy import BigInteger
 from sqlalchemy import Boolean, Date, LargeBinary
 from sqlalchemy import PickleType
@@ -57,6 +57,17 @@ class File(Base):
         
     def __repr__(self):
         return "<File:  id: %d>" % self.id
+    
+    
+class TumblrBlog(object):
+    __tablename__ = 'tumblr_blogs'
+    id = Column(Integer, primary_key=True)
+    name = Column(Unicode(200))
+    title = Column(Unicode(500))
+    url = Column(Unicode(500))
+    description = Column(UnicodeText)
+    updated_remote = Column(DateTime)
+    updated_local = Column(DateTime)
     
     
 

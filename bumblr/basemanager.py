@@ -13,12 +13,14 @@ class DashboardManager(object):
     def __init__(self, session):
         self.session = session
         self.client = None
+        self.client_info = None
         self.limit = 50
         
         
     def set_client(self, client):
         self.client = client
-
+        self.client_info = client.info()
+        
     def _query(self):
         return self.session.query(TumblrPost)
     

@@ -19,17 +19,6 @@ Base = declarative_base()
 ####################################
 
 
-FileType = Enum('agenda', 'minutes', 'attachment',
-                name='file_type_enum')
-
-AgendaItemType = Enum('presentation', 'policy', 'routine', 'unknown',
-                      name='agenda_item_type_enum')
-
-VoteType = Enum('Yea', 'Nay', 'Abstain', 'Absent', 'Present',
-                name='vote_type_enum')
-
-AgendaItemTypeMap = dict(V='presentation', VI='policy',
-                         VII='routine')
 
 ####################################
 ## Tables                         ##
@@ -91,8 +80,6 @@ class TumblrPost(Base):
     source_title = Column(Unicode(500))
     liked = Column(Boolean)
     content = Column(PickleType)
-
-#class TumblrBlog(Base):
 
 class TumblrPostPhoto(Base):
     __tablename__ = 'tumblr_post_photos'

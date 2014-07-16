@@ -18,6 +18,7 @@ class TumblrPhotoManager(object):
         self.session = session
         self.model = TumblrPhotoUrl
         self.repos = None
+        self.ignore_gifs = False
         
     def set_local_path(self, dirname):
         self.repos = FileRepos(dirname)
@@ -60,6 +61,9 @@ class TumblrPhotoManager(object):
         return self.repos.file_exists(url)
 
     def download_photo(self, url, dbobj):
+        if url.endswith('.gif'):
+            print "Skipping gif...", url
+            return
         filename = self.url_photo_filename(url)
         basename = os.path.basename(url)
         if self.photo_exists(url, filename=filename):

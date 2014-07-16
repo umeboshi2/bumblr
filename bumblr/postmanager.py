@@ -24,12 +24,14 @@ class TumblrPostManager(object):
     def __init__(self, session):
         self.session = session
         self.client = None
+        self.client_info = None
         self.limit = 50
         self.model = TumblrPost
         self.photos = TumblrPhotoManager(self.session)
         
     def set_client(self, client):
         self.client = client
+        self.client_info = self.client.info()
 
     def _query(self):
         return self.session.query(TumblrPost)
@@ -145,13 +147,53 @@ class TumblrPostManager(object):
                 print "added post from %s" % post['blog_name']
             print "%d processed." % (total_posts - len(posts))
 
-    def get_my_likes(self, total=None):
+    def _client_get_likes(self, offset, limit, blog_name=None):
+        if blog_name is None:
+            return self.client.likes(offset=offset, limit=limit)
+        else:
+            return self.client.blog_likes(blog_name,
+                                          offset=offset, limit=limit)
+        
+    def _get_likes(self, blog_name=None, total_desired=None):
         if self.client is None:
             raise RuntimeError, "Need to set client"
+        offset = 0
+        limit = 50
+        posts = self._client_get_likes(offset, limit, blog_name=blog_name)
+        if 'liked_count' not in posts:
+            return []
+        total_post_count = posts['liked_count']
+        if total_desired is not None:
+            if total_desired > total_post_count:
+                print "Too many posts desired."
+                total_desired = total_post_count
+            total_post_count = total_desired
+        current_posts = posts['liked_posts']
+        post_count = len(current_posts)
+        for post in current_posts:
+            if self.get(post['id']) is None:
+                self.add_post(post)
+        while post_count < total_post_count:
+            offset += limit
+            posts = self._client_get_likes(offset, limit,
+                                           blog_name=blog_name)
+            current_posts = posts['liked_posts']
+            for post in current_posts:
+                if self.get(post['id']) is None:
+                    self.add_post(post)
+            post_count += len(current_posts)
+            remaining = total_post_count - post_count
+            print "%d posts remaining." % remaining
+            
+    def get_my_likes(self, total_desired=None):
+        return self._get_likes(total_desired=total_desired)
 
-    def get_blog_likes(self, blogname):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
+    def _get_blog_likes(self, blogname, total_desired=None):
+        return self._get_likes(blog_name=blogname,
+                                  total_desired=total_desired)
+        
+    def get_blog_likes(self, blogname, total_desired=None):
+        return self._get_blog_likes(blogname, total_desired=total_desired)
     
                 
     

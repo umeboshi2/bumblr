@@ -18,6 +18,30 @@ Base = declarative_base()
 ## Data Types                     ##
 ####################################
 
+_overthis = [
+    'overten',
+    'overtwenty',
+    'overthirty',
+    'overforty',
+    'overfifty',
+    'oversixty',
+    'overseventy',
+    'overeighty',
+    'overninety',
+    'overonehundred']
+
+
+DEFAULT_BLOG_PROPERTIES = ['source',
+                           'followed',
+                           'follower',
+                           'liked_by_followed',
+                           'liked_by_follower',
+                           'favorite',
+                           'ignored',
+                           'fulltrack']
+DEFAULT_BLOG_PROPERTIES += _overthis
+OVERTHIS_MAP = dict([(10*i,n) for i,n in enumerate(_overthis, 1)])
+del _overthis
 
 
 ####################################
@@ -46,12 +70,17 @@ class File(Base):
         
     def __repr__(self):
         return "<File:  id: %d>" % self.id
-    
-    
-class TumblrBlog(object):
-    __tablename__ = 'tumblr_blogs'
+
+class BlogProperty(Base):
+    __tablename__ = 'blog_properties'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200))
+    
+    
+class TumblrBlog(Base):
+    __tablename__ = 'tumblr_blogs'
+    id = Column(Integer, primary_key=True)
+    name = Column(Unicode(200), unique=True)
     title = Column(Unicode(500))
     url = Column(Unicode(500))
     description = Column(UnicodeText)
@@ -59,7 +88,14 @@ class TumblrBlog(object):
     updated_local = Column(DateTime)
     
     
+class TumblrBlogProperty(Base):
+    __tablename__ = 'tumblr_blog_properties'
+    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
+                     primary_key=True)
+    property_id = Column(BigInteger, ForeignKey('blog_properties.id'),
+                          primary_key=True)
 
+    
 class TumblrPhotoUrl(Base):
     __tablename__ = 'tumblr_photo_urls'
     id = Column(Integer, primary_key=True)

@@ -4,6 +4,7 @@ import transaction
 import requests
 
 from bumblr.database import TumblrPost, TumblrPostPhoto
+from bumblr.database import TumblrLikedPost
 from bumblr.photomanager import TumblrPhotoManager
 
 
@@ -35,6 +36,9 @@ class TumblrPostManager(object):
 
     def _query(self):
         return self.session.query(TumblrPost)
+
+    def blogname_query(self, name):
+        return self._query().filter_by(blog_name=name)
     
     def get(self, id):
         return self.session.query(TumblrPost).get(id)
@@ -55,6 +59,10 @@ class TumblrPostManager(object):
     
     
     def add_post(self, post):
+        if self.get(post['id']) is not None:
+            msg = "Post %d for %s already in database."
+            print msg  % (post['id'], post['blog_name'])
+            return
         with transaction.manager:
             p = TumblrPost()
             for key in POSTKEYS:
@@ -69,13 +77,12 @@ class TumblrPostManager(object):
         self.update_photos(p.id, post=p)
         
 
-    def _get_all_posts(self, blogname, total_desired):
-        offset = 0
+    def _get_all_posts(self, blogname, total_desired, offset):
         limit = self.limit
         posts = self.client.posts(blogname, offset=offset, limit=limit)
         if 'total_posts' not in posts:
             return []
-        total_post_count = posts['total_posts']
+        total_post_count = posts['total_posts'] - offset
         if total_desired is not None:
             if total_desired > total_post_count:
                 print 'too many posts desired.'
@@ -98,8 +105,8 @@ class TumblrPostManager(object):
             print "%d posts remaining." % num_posts_left
         return all_posts
 
-    def get_all_posts(self, blogname, total_desired=None):
-        all_posts = self._get_all_posts(blogname, total_desired)
+    def get_all_posts(self, blogname, total_desired=None, offset=0):
+        all_posts = self._get_all_posts(blogname, total_desired, offset)
         while len(all_posts):
             post = all_posts.pop()
             if self.get(post['id']) is None:

@@ -117,6 +117,20 @@ class TumblrPost(Base):
     liked = Column(Boolean)
     content = Column(PickleType)
 
+class TumblrBlogPost(Base):
+    __tablename__ = 'tumblr_blog_posts'
+    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
+                     primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
+                     primary_key=True)
+
+class TumblrLikedPost(Base):
+    __tablename__ = 'tumblr_liked_posts'
+    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
+                     primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
+                     primary_key=True)
+    
 class TumblrPostPhoto(Base):
     __tablename__ = 'tumblr_post_photos'
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),

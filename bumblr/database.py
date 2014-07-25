@@ -84,9 +84,23 @@ class TumblrBlog(Base):
     title = Column(Unicode(500))
     url = Column(Unicode(500))
     description = Column(UnicodeText)
+    posts = Column(BigInteger)
+    likes = Column(BigInteger)
+    followed = Column(Boolean)
+    share_likes = Column(Boolean)
     updated_remote = Column(DateTime)
     updated_local = Column(DateTime)
     
+    ask = Column(Boolean)
+    ask_page_title = Column(Unicode(500))
+    ask_anon = Column(Boolean)
+    can_send_fan_mail = Column(Boolean)
+    is_nsfw = Column(Boolean)
+    facebook = Column(Unicode)
+    facebook_opengraph_enabled = Column(Unicode)
+    twitter_enabled = Column(Boolean)
+    tweet = Column(Unicode)
+    twitter_send = Column(Boolean)
     
 class TumblrBlogProperty(Base):
     __tablename__ = 'tumblr_blog_properties'
@@ -102,6 +116,12 @@ class TumblrPhotoUrl(Base):
     url = Column(Unicode(500), unique=True)
     status = Column(Integer)
 
+class TumblrThumbnailUrl(Base):
+    __tablename__ = 'tumblr_thumbnail_photo_urls'
+    id = Column(Integer, primary_key=True)
+    url = Column(Unicode(500), unique=True)
+    status = Column(Integer)
+    
 class TumblrPost(Base):
     __tablename__ = 'tumblr_posts'
     id = Column(BigInteger, primary_key=True)
@@ -130,6 +150,12 @@ class TumblrLikedPost(Base):
                      primary_key=True)
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)
+
+class TumblrMyLikedPost(Base):
+    __tablename__ = 'tumblr_my_liked_posts'
+    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
+                     primary_key=True)
+
     
 class TumblrPostPhoto(Base):
     __tablename__ = 'tumblr_post_photos'

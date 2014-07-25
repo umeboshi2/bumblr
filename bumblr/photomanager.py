@@ -1,24 +1,79 @@
 import os
 import multiprocessing
 from multiprocessing.pool import ThreadPool
+import time
 
 import transaction
 import requests
 
-from bumblr.database import TumblrPhotoUrl
+from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
 from bumblr.database import TumblrPostPhoto
 from bumblr.filerepos import FileExistsError, FileRepos
 
-class PhotoExistsError(Exception):
+class FileExistsError(Exception):
+    pass
+class PhotoExistsError(FileExistsError):
     pass
 
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l.
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
 
+
+# download a url to a FileRepos
+def download_url(utuple):
+    url, url_id, repos = utuple
+    if repos.file_exists(url):
+        #raise FileExistsError, "%s already in repository." % url
+        return url_id, 200
+    basename = os.path.basename(url)
+    filename = repos.filename(basename)
+    print "Downloading %s" % url
+    r = requests.get(url, stream=True)
+    if r.ok:
+        with repos.open_file(basename, 'wb') as output:
+            for chunk in r.iter_content(chunk_size=512):
+                output.write(chunk)
+    return url_id, r.status_code
+
+    
+
+def download_urlobjs(session, objs, repos, chunksize=20, processes=5,
+                     ignore_gifs=True):
+    #urllist = [o.url for o in objs]
+    paramlist = [(o.url, o.id, repos) for o in objs if \
+                     not o.url.endswith('.gif')]
+    giflist = [o for o in objs if o.url.endswith('.gif')]
+    with transaction.manager:
+        print "Ignoring %d gifs" % len(giflist)
+        for o in giflist:
+            o.status = 404
+            session.add(o)
+    grouped = chunks(paramlist, chunksize)
+    pool = ThreadPool(processes=processes)
+    count = 0
+    for group in grouped:
+        output = pool.map(download_url, group)
+        with transaction.manager:
+            for url_id, status in output:
+                tpu = session.query(TumblrPhotoUrl).get(url_id)
+                tpu.status = status
+                session.add(tpu)
+        count += 1
+        print "Group %d processed." % count
+        print "Sleeping for 0.1 second."
+        time.sleep(0.1)
+    
 class TumblrPhotoManager(object):
     def __init__(self, session):
         self.session = session
         self.model = TumblrPhotoUrl
         self.repos = None
         self.ignore_gifs = False
+        self.immediate_download = True
+        self.get_thumbnail = True
         
     def set_local_path(self, dirname):
         self.repos = FileRepos(dirname)
@@ -99,6 +154,9 @@ class TumblrPhotoManager(object):
             
 
     def update_photo(self, url_id):
+        if not self.immediate_download:
+            print "Skipping immediate update of %d" % url_id
+            return
         self._update_photo(url_id)
         
 
@@ -129,31 +187,8 @@ class TumblrPhotoManager(object):
     def update_all_photos(self, localdir=None):
         q = self._query().filter_by(status=None)
         urls = q.all()
-        params = [u.id for u in urls]
-        pool = ThreadPool(processes=5)
-        output = pool.map(self._update_photo, params)
+        download_urlobjs(self.session, urls, self.repos)
+            
+    def update_photos(self, urls):
+        download_urlobjs(self.session, urls, self.repos)
         
-    def update_all_photosOrig(self, localdir=None):
-        for turl in self._query():
-            url = turl.url
-            if not self.photo_exists(url):
-                if turl.status in [403, 400]:
-                    print "Skipping forbidden url", url
-                    continue
-                basename = os.path.basename(url)
-                if localdir is not None:
-                    local_filename = os.path.join(localdir, basename)
-                    if os.path.isfile(local_filename):
-                        print "found", local_filename
-                        self.repos.store_local_file(local_filename)
-                    else:
-                        #print "Downloading", basename
-                        #self.download_photo(url, turl)
-                        pass
-                else:
-                    print "Downloading", basename
-                    self.download_photo(url, turl)
-            else:
-                if turl.status != 200:
-                    turl.status = 200
-                    

@@ -13,7 +13,13 @@ from bumblr.database import BlogProperty, TumblrBlogProperty
 from bumblr.database import DEFAULT_BLOG_PROPERTIES
 from bumblr.postmanager import TumblrPostManager
 
-BLOGKEYS = ['name', 'title', 'url', 'description']
+BLOGKEYS = ['name', 'title', 'url', 'description', 'posts',
+            'followed', 'share_likes', 'ask', 'ask_page_title',
+            'ask_anon', 'can_send_fan_mail', 'is_nsfw',]
+# likes
+#'facebook',
+#            'facebook_opengraph_enabled', 'twitter_enabled',
+#            'tweet', 'twitter_send']
 
 class PropertyManager(object):
     def __init__(self, session):
@@ -99,9 +105,8 @@ class TumblrBlogManager(object):
     def get_by_property_query(self, propname):
         prop = self.properties.get_by_name(propname)
         
-    
-    
-    def add_blog(self, blog):
+
+    def add_blog_object(self, blog):
         with transaction.manager:
             b = self.model()
             for key in BLOGKEYS:
@@ -110,9 +115,15 @@ class TumblrBlogManager(object):
             b.updated_local = datetime.now()
             self.session.add(b)
         return self.session.merge(b)
-
-    # FIXME: this is slow and stupid
-    # use subquery
+    
+    def add_blog(self, blog_name):
+        info = self.client.blog_info(blog_name)
+        if 'blog' not in info:
+            if info['meta']['status'] == 404:
+                print "%s not found" % blog_name
+                return None
+        return self.add_blog_object(info['blog'])
+            
     def update_posts_for_blog(self, name, blog_id=None):
         if blog_id is None:
             blog = self.get_by_name(name)
@@ -126,8 +137,14 @@ class TumblrBlogManager(object):
         q = self.session.query(TumblrPost).filter_by(blog_name=blog.name)
         q = q.filter(not_(TumblrPost.id.in_(blogposts)))
         posts = q.all()
+        total = len(posts)
+        print "total", total
+        count = 0
+        if not total:
+            print "Nothing to update for", blog.name
         for post in posts:
             tbp = self.session.query(TumblrBlogPost).get((blog.id, post.id))
+            count += 1
             if tbp is None:
                 with transaction.manager:
                     tbp = TumblrBlogPost()
@@ -135,7 +152,10 @@ class TumblrBlogManager(object):
                     tbp.post_id = post.id
                     self.session.add(tbp)
                     print "Added %d for %s." % (post.id, blog.name)
-                    
+            if not count % 100:
+                remaining = total - count
+                print "%d posts remaining for %s" % (remaining, blog.name)
+                
     def get_followed_blogs(self):
         if self.client is None:
             raise RuntimeError, "Need to set client"
@@ -146,18 +166,23 @@ class TumblrBlogManager(object):
         current_blogs = blogs['blogs']
         blog_count = len(current_blogs)
         for blog in current_blogs:
-            if self.get_by_name(blog['name']) is None:
-                print "Adding %s" % blog
-                self.add_blog(blog)
+            blog_name = blog['name']
+            if self.get_by_name(blog_name) is None:
+                print "Adding %s" % blog_name
+                b = self.add_blog(blog_name)
+                if b is not None:
+                    self.properties.tag_blog(b.id, 'followed')
         while len(current_blogs):
             offset += limit
             blogs = self.client.following(offset=offset, limit=limit)
             current_blogs = blogs['blogs']
             for blog in current_blogs:
-                if self.get_by_name(blog['name']) is None:
-                    print "Adding %s" % blog['name']
-                    b = self.add_blog(blog)
-                    self.properties.tag_blog(b.id, 'followed')
+                blog_name = blog['name']
+                if self.get_by_name(blog_name) is None:
+                    print "Adding %s" % blog_name
+                    b = self.add_blog(blog_name)
+                    if b is not None:
+                        self.properties.tag_blog(b.id, 'followed')
             blog_count += len(current_blogs)
             remaining = total_blog_count - blog_count
             print '%d blogs remaining.' % remaining

@@ -4,7 +4,7 @@ import transaction
 import requests
 
 from bumblr.database import TumblrPost, TumblrPostPhoto
-from bumblr.database import TumblrLikedPost
+from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
 from bumblr.photomanager import TumblrPhotoManager
 
 
@@ -20,7 +20,19 @@ def get_post_photo_urls(photos):
         raise RuntimeError, "Something wrong with photos"
     return photolist
 
-
+def get_post_photo_thumbnail_urls(photos):
+    photolist = list()
+    for pdata in photos:
+        thumb = None
+        for psize in pdata['alt_sizes']:
+            if psize['width'] == 100:
+                thumb = psize['url']
+                break
+        photolist.append(thumb)
+    if not photolist:
+        raise RuntimeError, "Something wrong with photos"
+    return photolist
+    
 class TumblrPostManager(object):
     def __init__(self, session):
         self.session = session
@@ -77,7 +89,7 @@ class TumblrPostManager(object):
         self.update_photos(p.id, post=p)
         
 
-    def _get_all_posts(self, blogname, total_desired, offset):
+    def _get_all_postsOrig(self, blogname, total_desired, offset):
         limit = self.limit
         posts = self.client.posts(blogname, offset=offset, limit=limit)
         if 'total_posts' not in posts:
@@ -105,14 +117,40 @@ class TumblrPostManager(object):
             print "%d posts remaining." % num_posts_left
         return all_posts
 
+    def _get_all_posts(self, blogname, total_desired, offset):
+        limit = self.limit
+        current_post_count = 0
+        posts = self.client.posts(blogname, offset=offset, limit=limit)
+        if 'total_posts' not in posts:
+            return []
+        total_post_count = posts['total_posts'] - offset
+        if total_desired is not None:
+            if total_desired > total_post_count:
+                print 'too many posts desired.'
+                total_desired = total_post_count
+            total_post_count = total_desired
+        all_posts = list()
+        these_posts = posts['posts']
+        if len(these_posts) != limit:
+            if len(these_posts) != total_post_count:
+                raise RuntimeError, "Too few posts %d" % len(these_posts)
+        while current_post_count < total_post_count:
+            while len(these_posts):
+                post = these_posts.pop()
+                current_post_count += 1
+                if self.get(post['id']) is None:
+                    self.add_post(post)
+            offset += limit
+            print "Getting from tumblr at offset %d" % offset
+            posts = self.client.posts(blogname, offset=offset, limit=limit)
+            these_posts = posts['posts']
+            remaining = total_post_count - current_post_count
+            print "%d posts remaining for %s." % (remaining, blogname)
+            
+        
+
     def get_all_posts(self, blogname, total_desired=None, offset=0):
-        all_posts = self._get_all_posts(blogname, total_desired, offset)
-        while len(all_posts):
-            post = all_posts.pop()
-            if self.get(post['id']) is None:
-                self.add_post(post)
-            if not len(all_posts) % 100:
-                print "%s: %d posts remaining." % (blogname, len(all_posts))
+        self._get_all_posts(blogname, total_desired, offset)
 
     def update_photos(self, post_id, post=None):
         if post is None:
@@ -161,11 +199,27 @@ class TumblrPostManager(object):
             return self.client.blog_likes(blog_name,
                                           offset=offset, limit=limit)
         
+    def _set_liked_post(self, post_id, blog_id=None):
+        with transaction.manager:
+            if blog_id is None:
+                model = TumblrMyLikedPost()
+            else:
+                model = TumblrLikedPost()
+                model.blog_id = blog_id
+            model.post_id = post_id
+            self.session.add(model)
+        return self.session.merge(model)
+    
+    
     def _get_likes(self, blog_name=None, total_desired=None):
         if self.client is None:
             raise RuntimeError, "Need to set client"
         offset = 0
         limit = 50
+        if blog_name is None:
+            blog_id = None
+        else:
+            blog_id = None
         posts = self._client_get_likes(offset, limit, blog_name=blog_name)
         if 'liked_count' not in posts:
             return []

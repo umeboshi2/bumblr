@@ -3,7 +3,7 @@ import os
 import transaction
 import requests
 
-from bumblr.database import TumblrPost, TumblrPostPhoto
+from bumblr.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
 from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
 from bumblr.photomanager import TumblrPhotoManager
 
@@ -87,6 +87,7 @@ class TumblrPostManager(object):
             self.session.add(p)
         p = self.session.merge(p)
         self.update_photos(p.id, post=p)
+        self.update_thumbnails(p.id, post=p)
         
 
     def _get_all_postsOrig(self, blogname, total_desired, offset):
@@ -178,6 +179,33 @@ class TumblrPostManager(object):
             
                 
             
+    def update_thumbnails(self, post_id, post=None):
+        if post is None:
+            post = self.get(post_id)
+        if post is None:
+            return
+        if post.type != 'photo':
+            return
+        photos = get_post_photo_thumbnail_urls(post.content['photos'])
+        for url in photos:
+            if url is None:
+                continue
+            if not self.photos.thumbnail_url_exists(url):
+                print "Adding %s to thumbnail urls." % url
+                p = self.photos.add_thumbnail_url(url)
+            else:
+                p = self.photos.get_thumbnail_by_url(url)
+            if p is None:
+                raise RuntimeError, "Wawsup?"
+            rel = self.session.query(TumblrPostThumbnail).get((post.id, p.id))
+            if rel is None:
+                with transaction.manager:
+                    tpp = TumblrPostThumbnail()
+                    tpp.post_id = post.id
+                    tpp.thumb_id = p.id
+                    self.session.add(tpp)
+                print "Added relation", post.id, p.id
+            self.photos.update_thumbnail(p.id)
             
         
     def get_dashboard_posts(self, limit=20, offset=0):

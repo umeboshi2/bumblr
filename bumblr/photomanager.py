@@ -41,7 +41,7 @@ def download_url(utuple):
     
 
 def download_urlobjs(session, objs, repos, chunksize=20, processes=5,
-                     ignore_gifs=True):
+                     ignore_gifs=True, thumb_urls=False):
     #urllist = [o.url for o in objs]
     paramlist = [(o.url, o.id, repos) for o in objs if \
                      not o.url.endswith('.gif')]
@@ -57,8 +57,11 @@ def download_urlobjs(session, objs, repos, chunksize=20, processes=5,
     for group in grouped:
         output = pool.map(download_url, group)
         with transaction.manager:
+            model = TumblrPhotoUrl
+            if thumb_urls:
+                model = TumblrThumbnailUrl
             for url_id, status in output:
-                tpu = session.query(TumblrPhotoUrl).get(url_id)
+                tpu = session.query(model).get(url_id)
                 tpu.status = status
                 session.add(tpu)
         count += 1
@@ -80,12 +83,25 @@ class TumblrPhotoManager(object):
             
     def _query(self):
         return self.session.query(TumblrPhotoUrl)
-            
+
+    def _thumb_query(self):
+        return self.session.query(TumblrThumbnailUrl)
+    
     def get(self, id):
         return self.session.query(TumblrPhotoUrl).get(id)
 
     def get_by_url(self, url):
         q = self._query()
+        q = q.filter_by(url=url)
+        objects = q.all()
+        if not len(objects):
+            return None
+        if not len(objects) == 1:
+            raise RuntimeError, "Too many"
+        return objects.pop()
+    
+    def get_thumbnail_by_url(self, url):
+        q = self._thumb_query()
         q = q.filter_by(url=url)
         objects = q.all()
         if not len(objects):
@@ -101,8 +117,19 @@ class TumblrPhotoManager(object):
             self.session.add(turl)
         return self.session.merge(turl)
 
+    def add_thumbnail_url(self, url):
+        with transaction.manager:
+            turl = TumblrThumbnailUrl()
+            turl.url = url
+            self.session.add(turl)
+        return self.session.merge(turl)
+
     def url_exists(self, url):
         q = self.session.query(TumblrPhotoUrl).filter_by(url=url)
+        return len(q.all())
+    
+    def thumbnail_url_exists(self, url):
+        q = self.session.query(TumblrThumbnailUrl).filter_by(url=url)
         return len(q.all())
     
     def basename(self, url):
@@ -159,6 +186,13 @@ class TumblrPhotoManager(object):
             return
         self._update_photo(url_id)
         
+    def update_thumbnail(self, url_id):
+        if not self.immediate_download:
+            print "Skipping immediate update of %d" % url_id
+            return
+        raise RuntimeError, 'not ready'
+        self._update_photo(url_id)
+        
 
     def _update_photo(self, url_id, localdir=None):
         turl = self.get(url_id)
@@ -191,4 +225,10 @@ class TumblrPhotoManager(object):
             
     def update_photos(self, urls):
         download_urlobjs(self.session, urls, self.repos)
+        
+
+    def update_all_thumbnails(self):
+        q = self._thumb_query().filter_by(status=None)
+        urls = q.all()
+        download_urlobjs(self.session, urls, self.repos, thumb_urls=True)
         

@@ -8,6 +8,7 @@ from sqlalchemy import not_
 from bumblr.database import TumblrPost, TumblrPostPhoto
 from bumblr.database import TumblrBlog, TumblrBlogPost
 from bumblr.database import TumblrLikedPost, TumblrPhotoUrl
+from bumblr.database import TumblrThumbnailUrl, TumblrPostThumbnail
 
 from bumblr.database import BlogProperty, TumblrBlogProperty
 from bumblr.database import DEFAULT_BLOG_PROPERTIES
@@ -211,6 +212,7 @@ class TumblrBlogManager(object):
             raise RuntimeError, "%s doesn't exist." % blogname
         if not os.path.isdir(blogpath):
             os.makedirs(blogpath)
+        current_blog_files = os.listdir(blogpath)
         repos = self.posts.photos.repos
         q = self.session.query(TumblrPost).join(TumblrBlogPost)
         q = q.filter(TumblrBlogPost.blog_id == blog.id)
@@ -230,7 +232,40 @@ class TumblrBlogManager(object):
                         ext = '.jpg'
                     filebase = '%d-%d.%s' % (post.id, tpu.id, ext)
                     filename = os.path.join(blogpath, filebase)
-                    if not os.path.isfile(filename):
+                    #if not os.path.isfile(filename):
+                    if filebase not in current_blog_files:
+                        print "Linking", filename
+                        os.link(repos.filename(basename), filename)
+                    
+                
+    def make_thumb_directory(self, blogname, blogpath):
+        blog = self.get_by_name(blogname)
+        if blog is None:
+            raise RuntimeError, "%s doesn't exist." % blogname
+        if not os.path.isdir(blogpath):
+            os.makedirs(blogpath)
+        current_blog_files = os.listdir(blogpath)
+        repos = self.posts.photos.repos
+        q = self.session.query(TumblrPost).join(TumblrBlogPost)
+        q = q.filter(TumblrBlogPost.blog_id == blog.id)
+        q = q.order_by(TumblrPost.id)
+        for post in q:
+            if post.type != 'photo':
+                continue
+            photoquery = self.session.query(TumblrThumbnailUrl).join(TumblrPostThumbnail).filter(TumblrPostThumbnail.post_id == post.id)
+            for tpu in photoquery:
+                url = tpu.url
+                basename = os.path.basename(url)
+                if repos.file_exists(basename):
+                    if len(basename.split('.')) == 2:
+                        ext = basename.split('.')[1]
+                    else:
+                        print "WARNING! BAD GUESS"
+                        ext = '.jpg'
+                    filebase = '%d-%d.%s' % (post.id, tpu.id, ext)
+                    filename = os.path.join(blogpath, filebase)
+                    #if not os.path.isfile(filename):
+                    if filebase not in current_blog_files:
                         print "Linking", filename
                         os.link(repos.filename(basename), filename)
                     

@@ -90,6 +90,15 @@ class TumblrPhotoManager(object):
     def get(self, id):
         return self.session.query(TumblrPhotoUrl).get(id)
 
+    def get_all_ids_query(self):
+        qf = self.session.query
+        q = qf(TumblrPhotoUrl.id)
+        q = q.order_by(TumblrPhotoUrl.id)
+        return q
+
+    def get_all_ids(self):
+        return self.get_all_ids_query().all()
+
     def get_by_url(self, url):
         q = self._query()
         q = q.filter_by(url=url)

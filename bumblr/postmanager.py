@@ -90,34 +90,6 @@ class TumblrPostManager(object):
         self.update_thumbnails(p.id, post=p)
         
 
-    def _get_all_postsOrig(self, blogname, total_desired, offset):
-        limit = self.limit
-        posts = self.client.posts(blogname, offset=offset, limit=limit)
-        if 'total_posts' not in posts:
-            return []
-        total_post_count = posts['total_posts'] - offset
-        if total_desired is not None:
-            if total_desired > total_post_count:
-                print 'too many posts desired.'
-                total_desired = total_post_count
-            total_post_count = total_desired
-        all_posts = list()
-        these_posts = posts['posts']
-        these_posts = posts['posts']
-        if len(these_posts) != limit:
-            if len(these_posts) != total_post_count:
-                raise RuntimeError, "Too few posts %d" % len(these_posts)
-        all_posts += posts['posts']
-        while len(all_posts) < total_post_count:
-            offset += limit
-            print "Getting from %d" % offset
-            posts = self.client.posts(blogname, offset=offset, limit=limit)
-            plist = posts['posts']
-            all_posts += plist
-            num_posts_left = total_post_count - len(all_posts)
-            print "%d posts remaining." % num_posts_left
-        return all_posts
-
     def _get_all_posts(self, blogname, total_desired, offset):
         limit = self.limit
         current_post_count = 0

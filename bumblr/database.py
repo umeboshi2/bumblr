@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Sequence, Column, ForeignKey
 
 # column types
@@ -13,6 +15,24 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+
+class SerialBase(object):
+    def serialize(self):
+        data = dict()
+        table = self.__table__
+        for column in table.columns:
+            name = column.name
+            try:
+                pytype = column.type.python_type
+            except NotImplementedError:
+                print "NOTIMPLEMENTEDERROR", column, column.type
+            value = getattr(self, name)
+            if pytype is datetime:
+                value = value.isoformat()
+            data[name] = value
+        return data
+    
 
 ####################################
 ## Data Types                     ##
@@ -47,12 +67,6 @@ del _overthis
 ####################################
 ## Tables                         ##
 ####################################
-
-class ExampleTable(Base):
-    __tablename__ = 'example_table'
-    id = Column(Integer, primary_key=True)
-    name = Column(Unicode(200), unique=True)
-
 class File(Base):
     __tablename__ = 'files'
 
@@ -71,13 +85,13 @@ class File(Base):
     def __repr__(self):
         return "<File:  id: %d>" % self.id
 
-class BlogProperty(Base):
+class BlogProperty(Base, SerialBase):
     __tablename__ = 'blog_properties'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200))
     
     
-class TumblrBlog(Base):
+class TumblrBlog(Base, SerialBase):
     __tablename__ = 'tumblr_blogs'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200), unique=True)
@@ -102,7 +116,7 @@ class TumblrBlog(Base):
     tweet = Column(Unicode)
     twitter_send = Column(Boolean)
     
-class TumblrBlogProperty(Base):
+class TumblrBlogProperty(Base, SerialBase):
     __tablename__ = 'tumblr_blog_properties'
     blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
                      primary_key=True)
@@ -110,19 +124,19 @@ class TumblrBlogProperty(Base):
                           primary_key=True)
 
     
-class TumblrPhotoUrl(Base):
+class TumblrPhotoUrl(Base, SerialBase):
     __tablename__ = 'tumblr_photo_urls'
     id = Column(Integer, primary_key=True)
     url = Column(Unicode(500), unique=True)
     status = Column(Integer)
 
-class TumblrThumbnailUrl(Base):
+class TumblrThumbnailUrl(Base, SerialBase):
     __tablename__ = 'tumblr_thumbnail_photo_urls'
     id = Column(Integer, primary_key=True)
     url = Column(Unicode(500), unique=True)
     status = Column(Integer)
     
-class TumblrPost(Base):
+class TumblrPost(Base, SerialBase):
     __tablename__ = 'tumblr_posts'
     id = Column(BigInteger, primary_key=True)
     blog_name = Column(Unicode(200), index=True)
@@ -137,27 +151,27 @@ class TumblrPost(Base):
     liked = Column(Boolean)
     content = Column(PickleType)
 
-class TumblrBlogPost(Base):
+class TumblrBlogPost(Base, SerialBase):
     __tablename__ = 'tumblr_blog_posts'
     blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
                      primary_key=True)
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)
 
-class TumblrLikedPost(Base):
+class TumblrLikedPost(Base, SerialBase):
     __tablename__ = 'tumblr_liked_posts'
     blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
                      primary_key=True)
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)
 
-class TumblrMyLikedPost(Base):
+class TumblrMyLikedPost(Base, SerialBase):
     __tablename__ = 'tumblr_my_liked_posts'
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)
 
     
-class TumblrPostPhoto(Base):
+class TumblrPostPhoto(Base, SerialBase):
     __tablename__ = 'tumblr_post_photos'
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)
@@ -165,7 +179,7 @@ class TumblrPostPhoto(Base):
                           primary_key=True)
     
     
-class TumblrPostThumbnail(Base):
+class TumblrPostThumbnail(Base, SerialBase):
     __tablename__ = 'tumblr_post_thumbnails'
     post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
                      primary_key=True)

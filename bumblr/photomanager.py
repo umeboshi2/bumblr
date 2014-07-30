@@ -2,6 +2,7 @@ import os
 import multiprocessing
 from multiprocessing.pool import ThreadPool
 import time
+import hashlib
 
 import transaction
 import requests
@@ -33,9 +34,18 @@ def download_url(utuple):
     print "Downloading %s" % url
     r = requests.get(url, stream=True)
     if r.ok:
+        etag = r.headers['etag'][1:-1]
+        md5 = hashlib.md5()
         with repos.open_file(basename, 'wb') as output:
             for chunk in r.iter_content(chunk_size=512):
                 output.write(chunk)
+                md5.update(chunk)
+        md5sum = md5.hexdigest()
+        if md5sum != etag:
+            os.remove(filename)
+            print etag, 'etag'
+            print md5sum, 'md5sum'
+            raise RuntimeError, "Bad checksum with %s" % url
     return url_id, r.status_code
 
     
@@ -99,6 +109,16 @@ class TumblrPhotoManager(object):
     def get_all_ids(self):
         return self.get_all_ids_query().all()
 
+    def get_all_thumb_ids_query(self):
+        qf = self.session.query
+        q = qf(TumblrThumbnailUrl.id)
+        q = q.order_by(TumblrThumbnailUrl.id)
+        return q
+
+    def get_all_thumb_ids(self):
+        return self.get_all_ids_query().all()
+
+    
     def get_by_url(self, url):
         q = self._query()
         q = q.filter_by(url=url)

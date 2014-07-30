@@ -130,12 +130,24 @@ class TumblrPhotoUrl(Base, SerialBase):
     url = Column(Unicode(500), unique=True)
     status = Column(Integer)
 
+class TumblrPhotoUrlMd5sum(Base, SerialBase):
+    __tablename__ = 'tumblr_photo_urls_md5sums'
+    id = Column(BigInteger, ForeignKey('tumblr_photo_urls.id'),
+                          primary_key=True)
+    md5sum = Column(String(32))
+
 class TumblrThumbnailUrl(Base, SerialBase):
     __tablename__ = 'tumblr_thumbnail_photo_urls'
     id = Column(Integer, primary_key=True)
     url = Column(Unicode(500), unique=True)
     status = Column(Integer)
     
+class TumblrThumbnailUrlMd5sum(Base, SerialBase):
+    __tablename__ = 'tumblr_thumbnail_photo_urls_md5sums'
+    id = Column(BigInteger, ForeignKey('tumblr_thumbnail_photo_urls.id'),
+                          primary_key=True)
+    md5sum = Column(String(32))
+
 class TumblrPost(Base, SerialBase):
     __tablename__ = 'tumblr_posts'
     id = Column(BigInteger, primary_key=True)

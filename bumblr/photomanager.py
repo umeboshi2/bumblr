@@ -6,14 +6,26 @@ import hashlib
 
 import transaction
 import requests
+from sqlalchemy import not_
 
 from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
 from bumblr.database import TumblrPostPhoto
+from bumblr.database import TumblrPhotoUrlMd5sum
+from bumblr.database import TumblrThumbnailUrlMd5sum
+
 from bumblr.filerepos import FileExistsError, FileRepos
+
+MD5CLASSMAP = { TumblrPhotoUrl : TumblrPhotoUrlMd5sum,
+                TumblrThumbnailUrl : TumblrThumbnailUrlMd5sum }
+
 
 class FileExistsError(Exception):
     pass
+
 class PhotoExistsError(FileExistsError):
+    pass
+
+class BadRequestError(Exception):
     pass
 
 def chunks(l, n):
@@ -261,3 +273,52 @@ class TumblrPhotoManager(object):
         urls = q.all()
         download_urlobjs(self.session, urls, self.repos, thumb_urls=True)
         
+
+    # the dbrow is either photo or thumbnail
+    def get_remote_md5sum(self, dbrow):
+        model = MD5CLASSMAP[dbrow.__class__]
+        url = dbrow.url
+        r = requests.head(url)
+        if r.ok:
+            msum = r.headers['etag'][1:-1]
+            with transaction.manager:
+                row = model()
+                row.id = dbrow.id
+                row.md5sum = msum
+                self.session.add(row)
+            return self.session.merge(row)
+        msg = "Request for %s received %d"
+        raise BadRequestError, msg % (url, r.status_code)
+
+    def _get_all_remote_md5sums(self, urlclass, md5class):
+        current_sums = self.session.query(md5class.id)
+        current_sums = current_sums.subquery('current_sums')
+        q = self.session.query(urlclass)
+        for errorstatus in [403, 404]:
+            q = q.filter(urlclass.status != errorstatus)
+        q = q.filter(not_(urlclass.id.in_(current_sums)))
+        all = q.all()
+        total = len(all)
+        print "%d sums remaining" % total
+        count = 0
+        for turl in all:
+            count += 1
+            if turl.status not in [200, None]:
+                print "Skipping for status %s" % turl.status
+                
+            try:
+                self.get_remote_md5sum(turl)
+            except BadRequestError:
+                print "Bad request for %s" % turl.url
+                print "The object has status %s" % turl.status
+                time.sleep(0.5)
+            if not count % 1000:
+                remaining = total - count
+                print "%de urls remaining." % remaining
+                
+    def get_all_remote_photo_md5sums(self):
+        self._get_all_remote_md5sums(TumblrPhotoUrl, TumblrPhotoUrlMd5sum)
+            
+    def get_all_remote_thumbnail_md5sums(self):
+        self._get_all_remote_md5sums(TumblrThumbnailUrl,
+                                     TumblrThumbnailUrlMd5sum)

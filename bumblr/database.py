@@ -200,5 +200,39 @@ class TumblrPostThumbnail(Base, SerialBase):
     
     
 #######################################################
+# new tables
+#######################################################
+class BumblrPost(SerialBase):
+    __tablename__ = 'bumblr_posts'
+    id = Column(BigInteger, primary_key=True)
+    blog_name = Column(Unicode(200), index=True)
+    post_url = Column(Unicode(500))
+    type = Column(Unicode(50))
+    timestamp = Column(Integer)
+    date = Column(Unicode(50))
+    format = Column(Unicode(50))
+    
+    source_url = Column(Unicode)
+    source_title = Column(Unicode)
+    liked = Column(Boolean)
+    content = Column(PickleType)
+
+class BumblrPhotoUrl(SerialBase):
+    __tablename__ = 'bumblr_photo_urls'
+    id = Column(Integer, primary_key=True)
+    url = Column(Unicode(500), unique=True)
+    md5sum = Column(String(32))
+    headers = Column(PickleType)
+    status = Column(Integer)
+    is_thumbnail = Column(Boolean)
+
+
+class LocalBumblrPhotoUrl(SerialBase):
+    __tablename__ = 'bumblr_local_photo_urls'
+    id = Column(BigInteger, ForeignKey('bumblr_photo_urls.id'),
+                          primary_key=True)
+    
+
+#######################################################
 # relationships
 #######################################################

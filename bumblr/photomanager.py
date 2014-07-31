@@ -34,31 +34,101 @@ def chunks(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
 
+def get_md5sum_from_tumblr_headers(headers):
+    try:
+        return headers['etag'][1:-1]
+    except KeyError:
+        return None
 
+def get_md5sum_for_file(fileobj):
+    m = hashlib.md5()
+    block = fileobj.read(1024)
+    while block:
+        m.update(block)
+        block = fileobj.read(1024)
+    return m.hexdigest()
+
+def get_md5sum_with_head_request(utuple):
+    url, url_id = utuple
+    r = requests.head(url)
+    etag = None
+    if r.ok:
+        etag = get_md5sum_from_tumblr_headers(r.headers)
+    return url_id, r.status_code, etag
+
+
+def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
+                         thumb_urls=False):
+    paramlist = [(o.url, o.id) for o in objs]
+    grouped = chunks(paramlist, chunksize)
+    pool = ThreadPool(processes=processes)
+    count = 0
+    for group in grouped:
+        output = pool.map(get_md5sum_with_head_request, group)
+        with transaction.manager:
+            model = TumblrPhotoUrl
+            md5model = TumblrPhotoUrlMd5sum
+            if thumb_urls:
+                model = TumblrThumbnailUrl
+                md5model = TumblrThumbnailUrlMd5sum
+            for url_id, status, md5sum in output:
+                tpu = session.query(model).get(url_id)
+                tpu.status = status
+                session.add(tpu)
+                if md5sum is None:
+                    print "Skipping md5sum for status %d" % status
+                    continue
+                md = session.query(md5model).get(url_id)
+                if md is None:
+                    #print "md is None", md5sum, url_id
+                    md = md5model()
+                    md.id = url_id
+                    md.md5sum = md5sum
+                    session.add(md)
+                else:
+                    #print "MD is %s" % md
+                    md.md5sum = md5sum
+                    session.add(md)
+        count += 1
+        print "Group %d processed." % count
+        print "Sleeping for 0.1 second."
+        time.sleep(0.1)
+        
 # download a url to a FileRepos
 def download_url(utuple):
     url, url_id, repos = utuple
     if repos.file_exists(url):
-        #raise FileExistsError, "%s already in repository." % url
-        return url_id, 200
+        r = requests.head(url)
+        if r.ok:
+            basename = os.path.basename(url)
+            etag = get_md5sum_from_tumblr_headers(r.headers)
+            lfile = repos.open_file(basename)
+            md5sum = get_md5sum_for_file(lfile)
+            if etag != md5sum:
+                print "Bad md5sum found for %s" % url
+                os.remove(repos.filename(basename))
+            else:
+                #print 'local copy of %s is OK' % url
+                return url_id, 200, etag
     basename = os.path.basename(url)
     filename = repos.filename(basename)
     print "Downloading %s" % url
     r = requests.get(url, stream=True)
+    md5sum = None
     if r.ok:
-        etag = r.headers['etag'][1:-1]
         md5 = hashlib.md5()
         with repos.open_file(basename, 'wb') as output:
             for chunk in r.iter_content(chunk_size=512):
                 output.write(chunk)
                 md5.update(chunk)
+        etag = get_md5sum_from_tumblr_headers(r.headers)
         md5sum = md5.hexdigest()
         if md5sum != etag:
             os.remove(filename)
             print etag, 'etag'
             print md5sum, 'md5sum'
             raise RuntimeError, "Bad checksum with %s" % url
-    return url_id, r.status_code
+    return url_id, r.status_code, md5sum
 
     
 
@@ -80,12 +150,28 @@ def download_urlobjs(session, objs, repos, chunksize=20, processes=5,
         output = pool.map(download_url, group)
         with transaction.manager:
             model = TumblrPhotoUrl
+            md5model = TumblrPhotoUrlMd5sum
             if thumb_urls:
                 model = TumblrThumbnailUrl
-            for url_id, status in output:
+                md5model = TumblrThumbnailUrlMd5sum
+            for url_id, status, md5sum in output:
                 tpu = session.query(model).get(url_id)
                 tpu.status = status
                 session.add(tpu)
+                if md5sum is None:
+                    print "Skipping md5sum for status %d" % status
+                    continue
+                md = session.query(md5model).get(url_id)
+                if md is None:
+                    #print "md is None", md5sum, url_id
+                    md = md5model()
+                    md.id = url_id
+                    md.md5sum = md5sum
+                    session.add(md)
+                else:
+                    #print "MD is %s" % md
+                    md.md5sum = md5sum
+                    session.add(md)
         count += 1
         print "Group %d processed." % count
         print "Sleeping for 0.1 second."
@@ -155,6 +241,14 @@ class TumblrPhotoManager(object):
         with transaction.manager:
             turl = TumblrPhotoUrl()
             turl.url = url
+            self.session.add(turl)
+        return self.session.merge(turl)
+
+    def restore_url(self, data):
+        with transaction.manager:
+            turl = TumblrPhotoUrl()
+            for key in ['id', 'url', 'status']:
+                setattr(turl, key, data[key])
             self.session.add(turl)
         return self.session.merge(turl)
 
@@ -259,19 +353,8 @@ class TumblrPhotoManager(object):
             if turl.status != 200:
                 turl.status = 200
         
-    def update_all_photos(self, localdir=None):
-        q = self._query().filter_by(status=None)
-        urls = q.all()
-        download_urlobjs(self.session, urls, self.repos)
-            
     def update_photos(self, urls):
         download_urlobjs(self.session, urls, self.repos)
-        
-
-    def update_all_thumbnails(self):
-        q = self._thumb_query().filter_by(status=None)
-        urls = q.all()
-        download_urlobjs(self.session, urls, self.repos, thumb_urls=True)
         
 
     # the dbrow is either photo or thumbnail
@@ -280,7 +363,9 @@ class TumblrPhotoManager(object):
         url = dbrow.url
         r = requests.head(url)
         if r.ok:
-            msum = r.headers['etag'][1:-1]
+            msum = get_md5sum_from_tumblr_headers(r.headers)
+            if msum is None:
+                return
             with transaction.manager:
                 row = model()
                 row.id = dbrow.id
@@ -290,19 +375,50 @@ class TumblrPhotoManager(object):
         msg = "Request for %s received %d"
         raise BadRequestError, msg % (url, r.status_code)
 
-    def _get_all_remote_md5sums(self, urlclass, md5class):
+    def _make_md5query(self, urlclass, md5class):
         current_sums = self.session.query(md5class.id)
         current_sums = current_sums.subquery('current_sums')
         q = self.session.query(urlclass)
-        for errorstatus in [403, 404]:
+        for errorstatus in [400, 403, 404]:
             q = q.filter(urlclass.status != errorstatus)
         q = q.filter(not_(urlclass.id.in_(current_sums)))
-        all = q.all()
-        total = len(all)
+        return q
+    
+    def _get_all_remote_md5sums(self, urlclass, md5class):
+        thumb_urls = False
+        if urlclass is TumblrThumbnailUrl:
+            print "WE have thumbs"
+            thumb_urls = True
+        q = self._make_md5query(urlclass, md5class)
+        total = q.count()
         print "%d sums remaining" % total
         count = 0
-        for turl in all:
+        offset = 0
+        limit = 1000
+        q = q.offset(offset).limit(limit)
+        rows = q.all()
+        while len(rows):
+            get_md5sums_for_urls(self.session, rows, thumb_urls=thumb_urls)
             count += 1
+            offset += limit
+            if not count % 1000:
+                remaining = total - count
+                print "%de urls remaining." % remaining
+            q = self._make_md5query(urlclass, md5class)
+            q = q.offset(offset).limit(limit)
+            rows = q.all()
+            
+    def _get_all_remote_md5sumsOrig(self, urlclass, md5class):
+        q = self._make_md5query(urlclass, md5class)
+        total = q.count()
+        print "%d sums remaining" % total
+        count = 0
+        offset = 0
+        limit = 1000
+        q = q.offset(offset).limit(limit)
+        rows = q.all()
+        while len(rows):
+            turl = rows.pop()
             if turl.status not in [200, None]:
                 print "Skipping for status %s" % turl.status
                 
@@ -312,13 +428,48 @@ class TumblrPhotoManager(object):
                 print "Bad request for %s" % turl.url
                 print "The object has status %s" % turl.status
                 time.sleep(0.5)
+            count += 1
+            offset += limit
             if not count % 1000:
                 remaining = total - count
                 print "%de urls remaining." % remaining
-                
+            q = self._make_md5query(urlclass, md5class)
+            q = q.offset(offset).limit(limit)
+            rows = q.all()
+            
     def get_all_remote_photo_md5sums(self):
         self._get_all_remote_md5sums(TumblrPhotoUrl, TumblrPhotoUrlMd5sum)
             
     def get_all_remote_thumbnail_md5sums(self):
         self._get_all_remote_md5sums(TumblrThumbnailUrl,
                                      TumblrThumbnailUrlMd5sum)
+        
+    def _update_all_photos(self, thumbs=False):
+        chunksize = 20
+        processes = 5
+        qfun = self._query
+        if thumbs:
+            chunksize = 30
+            qfun = self._thumb_query
+        limit = 10000
+        offset = 0
+        count = 0
+        q = qfun().filter_by(status=None)
+        q = q.offset(offset).limit(limit)
+        urls = q.all()
+        while len(urls):
+            download_urlobjs(self.session, urls, self.repos,
+                             chunksize=chunksize, processes=processes,
+                             thumb_urls=thumbs)
+            count += 1
+            offset += limit
+            q = qfun().filter_by(status=None)
+            q = q.offset(offset).limit(limit)
+            urls = q.all()
+            print "Round %d finished." % count
+            
+    def update_all_thumbnails(self):
+        self._update_all_photos(thumbs=True)
+        
+    def update_all_photos(self, localdir=None):
+        self._update_all_photos(thumbs=False)

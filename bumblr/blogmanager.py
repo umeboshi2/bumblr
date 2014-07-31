@@ -152,7 +152,7 @@ class TumblrBlogManager(object):
                     tbp.blog_id = blog.id
                     tbp.post_id = post.id
                     self.session.add(tbp)
-                    print "Added %d for %s." % (post.id, blog.name)
+                    #print "Added %d for %s." % (post.id, blog.name)
             if not count % 100:
                 remaining = total - count
                 print "%d posts remaining for %s" % (remaining, blog.name)

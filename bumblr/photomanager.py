@@ -379,9 +379,9 @@ class TumblrPhotoManager(object):
         current_sums = self.session.query(md5class.id)
         current_sums = current_sums.subquery('current_sums')
         q = self.session.query(urlclass)
+        q = q.filter(not_(urlclass.id.in_(current_sums)))
         for errorstatus in [400, 403, 404]:
             q = q.filter(urlclass.status != errorstatus)
-        q = q.filter(not_(urlclass.id.in_(current_sums)))
         return q
     
     def _get_all_remote_md5sums(self, urlclass, md5class):

@@ -1,5 +1,11 @@
 import os
 import hashlib
+import uuid
+
+FILE_EXTENSIONS = dict(jpg='jpg', png='png',
+                       gif='gif')
+
+FILE_EXTENSIONS = ['jpg', 'png', 'gif']
 
 def _dirname_common(filename):
     m = hashlib.md5()
@@ -63,3 +69,42 @@ class UrlRepos(object):
     def __init__(self, path):
         self.path = path
 
+    def get_uuid(self, url):
+        return uuid.uuid5(uuid.NAMESPACE_URL, url)
+
+    def _get_top_bottom(self, uuid):
+        h = uuid.hex
+        return tuple(h.split(h[2:-2]))
+    
+    def _repos_dir(self, url):
+        uuid = self.get_uuid(url)
+        top, bottom = self._get_top_bottom(uuid)
+        return os.path.join(self.path, top, bottom)
+
+    def _repos_name(self, url):
+        uuid = self.get_uuid(url)
+        dirname = self._repos_dir(uuid)
+        extension = None
+        for e in FILE_EXTENSIONS:
+            if url.endswith('.%s' % e):
+                extension = e
+                break
+        if extension is None:
+            print "Guessing filetype for %s" % url
+            extension = 'jpg'
+        basename = '%s.%s' % (uuid.hex, extension)
+        return os.path.join(dirname, basename)
+
+    def file_exists(self, url):
+        return os.path.isfile(self._repos_name(url))
+    
+    def filename(self, url):
+        return self._repos_name(url)
+
+    def open_file(self, url, mode='rb'):
+        filename = self._repos_name(url)
+        dirname = os.path.dirname(filename)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+        return file(filename, mode)
+        

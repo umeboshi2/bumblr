@@ -4,6 +4,7 @@ from datetime import datetime
 import transaction
 import requests
 from sqlalchemy import not_
+from sqlalchemy import exists
 
 from bumblr.database import TumblrPost, TumblrPostPhoto
 from bumblr.database import TumblrBlog, TumblrBlogPost
@@ -97,7 +98,7 @@ class TumblrBlogManager(object):
         return rows.pop()
     
     def get_all_ids_query(self):
-        return self.session.query(self.model.id)
+        return self.session.query(self.model.id).order_by(self.model.id)
     
     def get_all_ids(self):
         q = self.get_all_ids_query()
@@ -132,11 +133,17 @@ class TumblrBlogManager(object):
             blog = self.get(blog_id)
         if blog is None:
             raise RuntimeError, "No blog named %s" % name
-        blogposts = self.session.query(TumblrBlogPost.post_id)
-        blogposts = blogposts.filter_by(blog_id=blog.id).subquery('blogposts')
         
+                        
         q = self.session.query(TumblrPost).filter_by(blog_name=blog.name)
-        q = q.filter(not_(TumblrPost.id.in_(blogposts)))
+        #blogposts = self.session.query(TumblrBlogPost.post_id)
+        #blogposts = blogposts.filter_by(blog_id=blog.id)
+        #blogposts = blogposts.subquery('blogposts')
+        #q = q.filter(not_(TumblrPost.id.in_(blogposts)))
+        #q = q.filter(not_(exists(blogposts)))
+        stmt = ~exists().where(TumblrBlogPost.post_id==TumblrPost.id)
+        q = q.filter(stmt)
+
         posts = q.all()
         total = len(posts)
         print "total", total

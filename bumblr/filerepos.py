@@ -70,7 +70,7 @@ class UrlRepos(object):
         self.path = path
 
     def get_uuid(self, url):
-        return uuid.uuid5(uuid.NAMESPACE_URL, url)
+        return uuid.uuid5(uuid.NAMESPACE_URL, bytes(url))
 
     def _get_top_bottom(self, uuid):
         h = uuid.hex

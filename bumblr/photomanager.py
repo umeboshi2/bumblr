@@ -7,6 +7,7 @@ import hashlib
 import transaction
 import requests
 from sqlalchemy import not_
+from sqlalchemy import exists
 
 from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
 from bumblr.database import TumblrPostPhoto
@@ -98,6 +99,8 @@ def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
 def download_url(utuple):
     url, url_id, repos = utuple
     if repos.file_exists(url):
+        return url_id, 777, None
+        #print "File exists for url_id %d" % url_id
         r = requests.head(url)
         if r.ok:
             basename = os.path.basename(url)
@@ -108,7 +111,7 @@ def download_url(utuple):
                 print "Bad md5sum found for %s" % url
                 os.remove(repos.filename(basename))
             else:
-                #print 'local copy of %s is OK' % url
+                print 'local copy of %s is OK' % url
                 return url_id, 200, etag
     basename = os.path.basename(url)
     filename = repos.filename(basename)
@@ -375,11 +378,23 @@ class TumblrPhotoManager(object):
         msg = "Request for %s received %d"
         raise BadRequestError, msg % (url, r.status_code)
 
-    def _make_md5query(self, urlclass, md5class):
+    def _make_md5queryOrig(self, urlclass, md5class):
         current_sums = self.session.query(md5class.id)
         current_sums = current_sums.subquery('current_sums')
         q = self.session.query(urlclass)
         q = q.filter(not_(urlclass.id.in_(current_sums)))
+        for errorstatus in [400, 403, 404]:
+            q = q.filter(urlclass.status != errorstatus)
+        return q
+    
+    def _make_md5query(self, urlclass, md5class):
+        current_sums = self.session.query(md5class.id)
+        current_sums = current_sums.subquery('current_sums')
+        stmt = ~exists().where(urlclass.id==md5class.id)
+        
+        q = self.session.query(urlclass)
+        #q = q.filter(not_(urlclass.id.in_(current_sums)))
+        q = q.filter(stmt)
         for errorstatus in [400, 403, 404]:
             q = q.filter(urlclass.status != errorstatus)
         return q
@@ -394,11 +409,12 @@ class TumblrPhotoManager(object):
         print "%d sums remaining" % total
         count = 0
         offset = 0
-        limit = 1000
+        limit = 10000
         q = q.offset(offset).limit(limit)
         rows = q.all()
         while len(rows):
-            get_md5sums_for_urls(self.session, rows, thumb_urls=thumb_urls)
+            get_md5sums_for_urls(self.session, rows, thumb_urls=thumb_urls,
+                                 chunksize=300, processes=8)
             count += 1
             offset += limit
             if not count % 1000:
@@ -408,34 +424,6 @@ class TumblrPhotoManager(object):
             q = q.offset(offset).limit(limit)
             rows = q.all()
             
-    def _get_all_remote_md5sumsOrig(self, urlclass, md5class):
-        q = self._make_md5query(urlclass, md5class)
-        total = q.count()
-        print "%d sums remaining" % total
-        count = 0
-        offset = 0
-        limit = 1000
-        q = q.offset(offset).limit(limit)
-        rows = q.all()
-        while len(rows):
-            turl = rows.pop()
-            if turl.status not in [200, None]:
-                print "Skipping for status %s" % turl.status
-                
-            try:
-                self.get_remote_md5sum(turl)
-            except BadRequestError:
-                print "Bad request for %s" % turl.url
-                print "The object has status %s" % turl.status
-                time.sleep(0.5)
-            count += 1
-            offset += limit
-            if not count % 1000:
-                remaining = total - count
-                print "%de urls remaining." % remaining
-            q = self._make_md5query(urlclass, md5class)
-            q = q.offset(offset).limit(limit)
-            rows = q.all()
             
     def get_all_remote_photo_md5sums(self):
         self._get_all_remote_md5sums(TumblrPhotoUrl, TumblrPhotoUrlMd5sum)
@@ -448,13 +436,17 @@ class TumblrPhotoManager(object):
         chunksize = 20
         processes = 5
         qfun = self._query
+        urlclass = TumblrPhotoUrl
         if thumbs:
-            chunksize = 30
+            chunksize = 300
+            processes = 10
             qfun = self._thumb_query
+            urlclass = TumblrThumbnailUrl
         limit = 10000
         offset = 0
         count = 0
         q = qfun().filter_by(status=None)
+        q = q.order_by(urlclass.id)
         q = q.offset(offset).limit(limit)
         urls = q.all()
         while len(urls):
@@ -464,6 +456,7 @@ class TumblrPhotoManager(object):
             count += 1
             offset += limit
             q = qfun().filter_by(status=None)
+            q = q.order_by(urlclass.id)
             q = q.offset(offset).limit(limit)
             urls = q.all()
             print "Round %d finished." % count

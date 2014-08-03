@@ -76,9 +76,9 @@ def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
                 tpu = session.query(model).get(url_id)
                 tpu.status = status
                 session.add(tpu)
-                if md5sum is None:
-                    print "Skipping md5sum for status %d" % status
-                    continue
+                #if md5sum is None:
+                #    print "Skipping md5sum for status %d" % status
+                #    continue
                 md = session.query(md5model).get(url_id)
                 if md is None:
                     #print "md is None", md5sum, url_id
@@ -86,10 +86,13 @@ def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
                     md.id = url_id
                     md.md5sum = md5sum
                     session.add(md)
-                else:
+                elif md5sum is not None:
                     #print "MD is %s" % md
                     md.md5sum = md5sum
                     session.add(md)
+                else:
+                    raise RuntimeError, "Something went wrong"
+                
         count += 1
         print "Group %d processed." % count
         print "Sleeping for 0.1 second."
@@ -360,24 +363,6 @@ class TumblrPhotoManager(object):
         download_urlobjs(self.session, urls, self.repos)
         
 
-    # the dbrow is either photo or thumbnail
-    def get_remote_md5sum(self, dbrow):
-        model = MD5CLASSMAP[dbrow.__class__]
-        url = dbrow.url
-        r = requests.head(url)
-        if r.ok:
-            msum = get_md5sum_from_tumblr_headers(r.headers)
-            if msum is None:
-                return
-            with transaction.manager:
-                row = model()
-                row.id = dbrow.id
-                row.md5sum = msum
-                self.session.add(row)
-            return self.session.merge(row)
-        msg = "Request for %s received %d"
-        raise BadRequestError, msg % (url, r.status_code)
-
     def _make_md5queryOrig(self, urlclass, md5class):
         current_sums = self.session.query(md5class.id)
         current_sums = current_sums.subquery('current_sums')
@@ -388,14 +373,10 @@ class TumblrPhotoManager(object):
         return q
     
     def _make_md5query(self, urlclass, md5class):
-        current_sums = self.session.query(md5class.id)
-        current_sums = current_sums.subquery('current_sums')
         stmt = ~exists().where(urlclass.id==md5class.id)
-        
         q = self.session.query(urlclass)
-        #q = q.filter(not_(urlclass.id.in_(current_sums)))
         q = q.filter(stmt)
-        for errorstatus in [400, 403, 404]:
+        for errorstatus in [400, 403, 404, 302]:
             q = q.filter(urlclass.status != errorstatus)
         return q
     

@@ -1,0 +1,29 @@
+{
+  "name": "bumblrpages",
+  "version": "0.0.0",
+  "homepage": "https://github.com/umeboshi2/bumblr",
+  "license": "None",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.1",
+    "lodash": "~2.4.1",
+    "backbone": "~1.1.2",
+    "marionette": "~2.0.3",
+    "bootstrap": "~3.2.0",
+    "jquery-ui": "~1.11.0",
+    "requirejs": "~2.1.14",
+    "teacup": "https://github.com/goodeggs/teacup.git#~0.4.1",
+    "fullcalendar": "~2.0.2",
+    "marked": "~0.3.2"
+  },
+  "resolutions": {
+    "jquery": "~2.1.1"
+  }
+}

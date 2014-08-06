@@ -4,8 +4,6 @@ define (require, exports, module) ->
   Backbone = require 'backbone'
   MSGBUS = require 'msgbus'
 
-  Qs = require 'qs'
-  
   ########################################
   # stuff
   ########################################

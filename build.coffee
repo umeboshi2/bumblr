@@ -1,6 +1,6 @@
 (
-  baseUrl: 'javascripts/hubby'
-  mainConfigFile: 'javascripts/hubby/main.js'
+  baseUrl: 'javascripts/bumblr'
+  mainConfigFile: 'javascripts/bumblr/main.js'
   paths:
     # these paths are relative the the main
     # config file above.  The base url is
@@ -25,7 +25,7 @@
     marked: '../../components/marked/lib/marked'
     
   name: 'main'
-  out: 'javascripts/hubby-built.js'
+  out: 'javascripts/bumblr-built.js'
   include: ['requireLib']
   wrapShim: true
   optimize: 'uglify'

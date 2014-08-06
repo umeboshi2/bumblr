@@ -1,6 +1,6 @@
 # require config comes first
 require.config
-  baseUrl: 'javascripts/hubby'
+  baseUrl: 'javascripts/bumblr'
   paths:
     jquery: '../../../components/jquery/dist/jquery'
     underscore: '../../../components/lodash/dist/lodash.compat'
@@ -17,6 +17,7 @@ require.config
     text: '../../../components/requirejs-text/text'
     teacup: '../../../components/teacup/lib/teacup'
     marked: '../../../components/marked/lib/marked'
+    qs: '../../../components/qs'
     
   # FIXME:  try to reduce the shim to only the
   # necessary resources
@@ -33,8 +34,8 @@ require.config
     marionette:
       deps: ['jquery', 'underscore', 'backbone']
       exports: 'Marionette'
-
-
+    #qs:
+    #  exports: 'Qs'
 require [
   'application'
   'frontdoor/main'

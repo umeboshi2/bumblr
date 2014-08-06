@@ -6,18 +6,11 @@ define (require, exports, module) ->
   ########################################
   # Models
   ########################################
-  class SimpleMeetingModel extends Backbone.Model
-
-  class MainMeetingModel extends Backbone.Model
-    url: () ->
-      'http://hubby.littledebian.org/rest/v0/main/meeting/' + @id
+  class BaseModel extends Backbone.Model
     parse: (response) ->
       response.data
-
-  class ItemActionModel extends Backbone.Model
+    
+  class SimpleMeetingModel extends BaseModel
 
   module.exports =
     SimpleMeetingModel: SimpleMeetingModel
-    MainMeetingModel: MainMeetingModel
-    ItemActionModel: ItemActionModel
-    

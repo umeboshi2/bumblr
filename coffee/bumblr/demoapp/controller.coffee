@@ -16,12 +16,16 @@ define (require, exports, module) ->
     header: 'Sidebar'
     entries: [
       {
-        name: 'maincalendar'
-        label: 'Main Calendar'
+        name: 'mainview-button'
+        label: 'Main View'
       }
       {
-        name: 'listmeetings'
-        label: 'List Meetings'
+        name: 'dashboard-view-button'
+        label: 'Dashboard'
+      }
+      {
+        name: 'list-blogs-button'
+        label: 'List Blogs'
       }
     ]
 
@@ -48,14 +52,24 @@ define (require, exports, module) ->
       #console.log 'hubby start'
       MSGBUS.events.trigger 'rcontent:close'
       MSGBUS.events.trigger 'sidebar:close'
-      @set_header 'Hubby'
-      @show_calendar()
+      @set_header 'Bumblr'
+      @show_mainview()
+
+    show_mainview: () ->
+      @make_sidebar()
+      view = new Views.MainBumblrView
+      MSGBUS.events.trigger 'rcontent:show', view
       
+
+    show_dashboard: () ->
+      @make_sidebar()
+      view = new Views.BumblrDashboardView
+      MSGBUS.events.trigger 'rcontent:show', view
+        
     show_calendar: () ->
       #console.log 'hubby show calendar'
       @make_sidebar()
-      view = new Views.MeetingCalendarView
-      MSGBUS.events.trigger 'rcontent:show', view
+      console.log 'show_calendar'
       
     show_meeting: (meeting_id) ->
       #console.log 'show_meeting called'

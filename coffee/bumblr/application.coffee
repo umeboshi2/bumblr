@@ -5,7 +5,6 @@ define (require, exports, module) ->
   Backbone = require 'backbone'
   bootstrap = require 'bootstrap'
   Marionette = require 'marionette'
-
   
   MSGBUS = require 'msgbus'
   Models = require 'models'
@@ -37,7 +36,7 @@ define (require, exports, module) ->
 
       # then setup the routes
       MSGBUS.commands.execute 'frontdoor:route'
-      MSGBUS.commands.execute 'hubby:route'
+      MSGBUS.commands.execute 'demo:route'
       
     # connect events
     MSGBUS.events.on 'mainpage:show', (view) =>
@@ -73,6 +72,7 @@ define (require, exports, module) ->
         if app.content.currentView != undefined
           console.log app.content.currentView
           app.content.empty()
+
       
             
       
@@ -81,6 +81,17 @@ define (require, exports, module) ->
   app.ready = false
 
   prepare_app app
+  settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
+  #clent = tumblr.createClient
+  #  consumer_key: settings.get 'consumer_key'
+  #  consumer_secret: settings.get 'consumer_secret'
+  #  token: settings.get 'token'
+  #  token_secret: settings.get 'token_secret'
+  MSGBUS.reqres.setHandler 'bumblr:get_tumblr_client', () ->
+    client
+    
+  app.settings = settings
+  #app.client = client
   app.ready = true
     
   

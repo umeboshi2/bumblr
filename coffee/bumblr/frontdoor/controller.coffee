@@ -5,6 +5,7 @@ define (require, exports, module) ->
   MSGBUS = require 'msgbus'
 
   FDViews = require 'frontdoor/views'
+  MainViews = require 'views/mainviews'
 
   marked = require 'marked'
   Models = require 'models'
@@ -42,7 +43,13 @@ define (require, exports, module) ->
         view = new FDViews.FrontDoorMainView
           model: page
         MSGBUS.events.trigger 'rcontent:show', view
-          
+
+    settings_page: ->
+      console.log 'Settings page.....'
+      settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
+      view = new MainViews.ConsumerKeyFormView model:settings
+      MSGBUS.events.trigger 'rcontent:show', view
+      
     start: ->
       console.log 'controller.start called'
       @make_main_content()

@@ -70,8 +70,10 @@ define (require, exports, module) ->
           li ->
             a href:'#', 'Home'
           li ->
-            a href:'#hubby', 'Demo'
-        ul '.nav.navbar-nav.navbar-right', ->
+            a href:'#demo', 'Demo'
+        ul '.nav.navbar-nav.navbar-ight', ->
+          li ->
+            a href:'#settings', 'Settings'
               
 
   BootstrapLayoutTemplate = renderable () ->
@@ -92,13 +94,37 @@ define (require, exports, module) ->
           a href:entry.url, entry.name          
   
 
+  consumer_key_form = renderable (settings) ->
+    div '.form-group', ->
+      label '.control-label', for:'input_key', 'Consumer Key'
+      input '#input_key.form-control',
+      name:'consumer_key', 'data-validation':'consumer_key',
+      placeholder:'', value: settings.consumer_key
+    div '.form-group', ->
+      label '.control-label', for:'input_secret', 'Consumer Secret'
+      input '#input_secret.form-control',
+      name:'consumer_secret', 'data-validation':'consumer_secret',
+      placeholder:'', value: settings.consumer_secret
+    div '.form-group', ->
+      label '.control-label', for:'input_token', 'Token'
+      input '#input_token.form-control',
+      name:'token', 'data-validation':'token',
+      placeholder:'', value: settings.token
+    div '.form-group', ->
+      label '.control-label', for:'input_tsecret', 'Token Secret'
+      input '#input_tsecret.form-control',
+      name:'token_secret', 'data-validation':'token_secret',
+      placeholder:'', value: settings.token_secret
+    input '.btn.btn-default.btn-xs', type:'submit', value:'Submit'
+    
   module.exports =
     PageLayoutTemplate: PageLayoutTemplate
     BootstrapLayoutTemplate: BootstrapLayoutTemplate
     BootstrapNavBarTemplate: BootstrapNavBarTemplate
     main_sidebar: main_sidebar
     make_menu: make_menu
-
+    consumer_key_form: consumer_key_form
+    
 
 
 

@@ -5,7 +5,7 @@ define (require, exports, module) ->
   Views = require 'views/mainviews'
 
   HubbyBrand = new Backbone.Model
-    name: 'Hubby'
+    name: 'Bumblr'
     url: '#'
     
     

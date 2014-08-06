@@ -13,7 +13,7 @@ define (require, exports, module) ->
 
   class SideBarView extends Backbone.Marionette.ItemView
     template: Templates.main_sidebar
-    
+
   module.exports =
     FrontDoorMainView: FrontDoorMainView
     SideBarView: SideBarView

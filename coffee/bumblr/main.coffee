@@ -1,6 +1,6 @@
 # require config comes first
 require.config
-  baseUrl: 'javascripts/hubby'
+  baseUrl: 'javascripts/bumblr'
   paths:
     jquery: '../../components/jquery/dist/jquery'
     underscore: '../../../components/lodash/dist/lodash.compat'
@@ -33,7 +33,6 @@ require.config
     marionette:
       deps: ['jquery', 'underscore', 'backbone']
       exports: 'Marionette'
-
 
 require [
   'application'

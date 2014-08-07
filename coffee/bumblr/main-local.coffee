@@ -17,7 +17,12 @@ require.config
     text: '../../../components/requirejs-text/text'
     teacup: '../../../components/teacup/lib/teacup'
     marked: '../../../components/marked/lib/marked'
-    qs: '../../../components/qs'
+    querystring: '../../../components/query-string/query-string'
+    #oauth: '../../../components/oauth-1.0a/index'
+    #request: '../../../components/request'
+    oauth: '../../../components/oauth-js/dist/oauth.min'
+    'backbone.paginator': '../../../components/backbone.paginator/lib/backbone.paginator'
+    
     
   # FIXME:  try to reduce the shim to only the
   # necessary resources

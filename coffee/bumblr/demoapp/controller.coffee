@@ -30,7 +30,11 @@ define (require, exports, module) ->
     ]
 
   meetings = MSGBUS.reqres.request 'hubby:meetinglist'
-  
+
+  credentials = MSGBUS.reqres.request 'bumblr:get_app_settings'
+  api_key = credentials.consumer_key
+  console.log 'api_key is -> ' + api_key
+    
   class Controller extends Backbone.Marionette.Controller
     make_sidebar: ->
       meetings = MSGBUS.reqres.request 'hubby:meetinglist'
@@ -82,6 +86,15 @@ define (require, exports, module) ->
           model: meeting
         MSGBUS.events.trigger 'rcontent:show', view
 
+    list_blogs: () ->
+      console.log 'list_blogs called;'
+      @make_sidebar()
+      blogs = MSGBUS.reqres.request 'bumblr:get_local_blogs'
+      view = new Views.SimpleBlogListView
+        collection: blogs
+      MSGBUS.events.trigger 'rcontent:show', view
+      
+      
     list_meetings: () ->
       console.log 'list_meetings called'
       @make_sidebar()
@@ -90,6 +103,20 @@ define (require, exports, module) ->
       if meetings.length == 0
         meetings.fetch()
       MSGBUS.events.trigger 'rcontent:show', view
+
+    view_blog: (blog_id) ->
+      console.log 'view blog called for ' + blog_id
+      @make_sidebar()
+      make_collection = 'bumblr:make_blog_post_collection'
+      base_hostname = blog_id + '.tumblr.com'
+      collection = MSGBUS.reqres.request make_collection, base_hostname
+      window.blcollection = collection
+      response = collection.fetch()
+      response.done =>
+        view = new Views.BlogPostListView
+          collection: collection
+        window.blogView = view
+        MSGBUS.events.trigger 'rcontent:show', view
       
     edit_page: (page_id) ->
       @make_sidebar()

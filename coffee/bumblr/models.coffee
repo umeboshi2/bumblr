@@ -5,7 +5,6 @@ define (require, exports, module) ->
   MSGBUS = require 'msgbus'
   PageableCollection = require 'backbone.paginator'
   qs = require 'querystring'
-  OAuth = require 'oauth'
     
   ########################################
   # Base Models
@@ -62,13 +61,15 @@ define (require, exports, module) ->
   class BlogInfo extends BaseTumblrModel
     url: () ->
       @baseURL + '/blog/' + @id + '/info?api_key=' + @api_key + '&callback=?'
-
+    parse: (response) ->
+      blog = response.response.blog
+      @set 'id', blog.name
+      return blog
+      
+      
     
   class Post extends BaseTumblrModel
 
-    
-  #class LocalBlog extends BaseLocalStorageModel
-  #  id: 'bumblr_blogs'
   class LocalBlogModel extends Backbone.Model
 
     
@@ -101,6 +102,29 @@ define (require, exports, module) ->
     url: () ->
       baseURL + '/' + @id + '/posts/photo' + '?callback=?'
       
+  class BlogPosts extends Backbone.Collection
+    baseURL: baseURL
+    url: () ->
+      url = @baseURL + '/blog/' + @base_hostname + '/posts/photo?api_key='
+      url = url + @api_key + '&callback=?'
+      return url
+    parse: (response) ->
+      response.response.posts
+
+  make_blog_post_collection = (base_hostname) ->
+    settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
+    api_key = settings.get 'consumer_key'
+    bp = new BlogPosts
+    bp.api_key = api_key
+    bp.base_hostname = base_hostname
+    console.log 'bp.api_key is ' + bp.api_key
+    console.log 'bp.url() is ' + bp.url()
+    return bp
+    
+  req = 'bumblr:make_blog_post_collection'
+  MSGBUS.reqres.setHandler req, (base_hostname) ->
+    make_blog_post_collection(base_hostname)
+    
   ########################################
   # Models
   ########################################
@@ -129,7 +153,9 @@ define (require, exports, module) ->
   local_blogs = new LocalBlogCollection
   MSGBUS.reqres.setHandler 'bumblr:get_local_blogs', ->
     local_blogs
-    
+
+     
   module.exports =
     Page: Page
+    BlogPosts: BlogPosts
     

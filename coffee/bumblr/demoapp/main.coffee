@@ -10,6 +10,8 @@ define (require, exports, module) ->
     appRoutes:
       'demo': 'start'
       'demo/dashboard': 'show_dashboard'
+      'demo/listblogs': 'list_blogs'
+      'demo/viewblog/:id': 'view_blog'
       'demo/viewmeeting/:id': 'show_meeting'
       'demo/listmeetings': 'list_meetings'
       
@@ -22,7 +24,6 @@ define (require, exports, module) ->
     current_calendar_date
     
   MSGBUS.commands.setHandler 'demo:route', () ->
-    #window.msgbus = MSGBUS
     console.log "demo:route being handled..."
     controller = new Controller
     router = new Router

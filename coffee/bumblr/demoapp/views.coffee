@@ -5,7 +5,8 @@ define (require, exports, module) ->
 
   Templates = require 'demoapp/templates'
   Models = require 'demoapp/models'
-  
+  BaseModels = require 'models'
+    
   require 'jquery-ui'
   
   class SideBarView extends Backbone.Marionette.ItemView
@@ -13,6 +14,7 @@ define (require, exports, module) ->
     events:
       'click .mainview-button': 'mainview_pressed'
       'click .dashboard-view-button': 'dashboard_view_pressed'
+      'click .list-blogs-button': 'list_blogs_pressed'
       
     _navigate: (url) ->
       r = new Backbone.Router
@@ -25,6 +27,11 @@ define (require, exports, module) ->
     dashboard_view_pressed: () ->
       console.log 'dashboard_view_pressed called'
       @_navigate '#demo/dashboard'
+
+    list_blogs_pressed: () ->
+      console.log 'list_blogs_pressed called'
+      @_navigate '#demo/listblogs'
+      
       
   render_calendar_event = (calEvent, element) ->
     calEvent.url = '#bumblr/viewmeeting/' + calEvent.id
@@ -44,7 +51,14 @@ define (require, exports, module) ->
       loading.hide()
       header.show()
       
-      
+
+  class SimpleBlogInfoView extends Backbone.Marionette.ItemView
+    template: Templates.simple_blog_info
+
+  class SimpleBlogListView extends Backbone.Marionette.CollectionView
+    childView: SimpleBlogInfoView
+    
+                
   class MainBumblrView extends Backbone.Marionette.ItemView
     template: Templates.main_bumblr_view
 
@@ -54,9 +68,18 @@ define (require, exports, module) ->
   class ShowPageView extends Backbone.Marionette.ItemView
     template: Templates.page_view
 
+
+  class SimpleBlogPostView extends Backbone.Marionette.ItemView
+    template: Templates.simple_post_view
+    
+  class BlogPostListView extends Backbone.Marionette.CollectionView
+    childView: SimpleBlogPostView
+
   module.exports =
     SideBarView: SideBarView
     MainBumblrView: MainBumblrView
     BumblrDashboardView: BumblrDashboardView
+    SimpleBlogListView: SimpleBlogListView
+    BlogPostListView: BlogPostListView
     
     

@@ -81,17 +81,7 @@ define (require, exports, module) ->
   app.ready = false
 
   prepare_app app
-  #settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
-  #clent = tumblr.createClient
-  #  consumer_key: settings.get 'consumer_key'
-  #  consumer_secret: settings.get 'consumer_secret'
-  #  token: settings.get 'token'
-  #  token_secret: settings.get 'token_secret'
-  #MSGBUS.reqres.setHandler 'bumblr:get_tumblr_client', () ->
-  #  client
-  client = MSGBUS.reqres.request 'bumblr:get_tumblr_client' 
-  app.client = client
-  #app.client = client
+
   app.ready = true
     
   

@@ -57,7 +57,20 @@ define (require, exports, module) ->
 
   bumblr_dashboard_view = renderable (model) ->
     p 'bumblr_dashboard_view'
-              
+
+
+  simple_blog_info = renderable (blog) ->
+    div ->
+      a href:'#demo/viewblog/' + blog.name, blog.name
+
+  simple_post_view = renderable (post) ->
+    span ->
+      a href:post.post_url, target:'_blank', post.blog_name
+    span ->
+      for photo in post.photos
+        for size in photo.alt_sizes
+          if size.width == 400
+            img src:size.url, href:post.url
   ##################################################################
   # ##########################
   ##################################################################    
@@ -67,5 +80,7 @@ define (require, exports, module) ->
     meeting_calendar: meeting_calendar
     main_bumblr_view: main_bumblr_view
     bumblr_dashboard_view: bumblr_dashboard_view
+    simple_blog_info: simple_blog_info
+    simple_post_view: simple_post_view
     
     

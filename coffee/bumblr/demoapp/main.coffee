@@ -12,6 +12,7 @@ define (require, exports, module) ->
       'demo/dashboard': 'show_dashboard'
       'demo/listblogs': 'list_blogs'
       'demo/viewblog/:id': 'view_blog'
+      'demo/addblog' : 'add_new_blog'
       
   current_calendar_date = undefined
   MSGBUS.commands.setHandler 'demo:maincalendar:set_date', () ->

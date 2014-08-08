@@ -13,6 +13,7 @@
     backbone: '../../components/backbone/backbone'
     'backbone.babysitter': '../../components/backbone.babysitter/lib/backbone.babysitter'
     'backbone.wreqr': '../../components/backbone.wreqr/lib/backbone.wreqr'
+    'backbone.paginator': '../../components/backbone.paginator/lib/backbone.paginator'
     marionette: '../../components/marionette/lib/core/backbone.marionette'
     validation: '../../components/backbone.validation/dist/backbone-validation-amd'
     bootstrap: '../../components/bootstrap/dist/js/bootstrap'
@@ -23,6 +24,7 @@
     text: '../../components/requirejs-text/text'
     teacup: '../../components/teacup/lib/teacup'
     marked: '../../components/marked/lib/marked'
+    querystring: '../../components/query-string/query-string'
     
   name: 'main'
   out: 'javascripts/bumblr-built.js'

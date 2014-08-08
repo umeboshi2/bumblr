@@ -46,12 +46,6 @@ define (require, exports, module) ->
       for entry in model.entries
         div '.btn.btn-default.' + entry.name, entry.label
         
-  meeting_calendar = renderable () ->
-    div '.listview-header', 'Meetings'
-    div '#loading', ->
-      h2 'Loading Meetings'
-    div '#maincalendar'
-
   main_bumblr_view = renderable (model) ->
     p 'main bumblr view'
 
@@ -59,10 +53,22 @@ define (require, exports, module) ->
     p 'bumblr_dashboard_view'
 
 
+  simple_blog_list = renderable () ->
+    div ->
+      a '.btn.btn-default', href:'#demo/addblog', "Add blog"
+      div '#bloglist-container'
+      
   simple_blog_info = renderable (blog) ->
     div ->
       a href:'#demo/viewblog/' + blog.name, blog.name
 
+  simple_post_page_view = renderable () ->
+    div ->
+      div '.mytoolbar', ->
+        div '#prev-page-button.btn.btn-default.pull-left', '<-'
+        div '#next-page-button.btn.btn-default.pull-right', '->'
+      div '#posts-container'
+      
   simple_post_view = renderable (post) ->
     div '.alert.alert-success', ->
       p ->
@@ -71,8 +77,17 @@ define (require, exports, module) ->
         #for photo in post.photos
         photo = post.photos[0]
         for size in photo.alt_sizes
-          if size.width == 250
+          if size.width == 100
             img src:size.url, href:post.url
+
+  new_blog_form_view = renderable (model) ->
+    div '.form-group', ->
+      label '.control-label', for:'input_blogname', 'Blog Name'
+      input '#input_blogname.form-control',
+      name:'blog_name', 'data-validation':'blog_name',
+      placeholder:'', value: '8bitfuture'
+    input '.btn.btn-default.btn-xs', type:'submit', value:'Add Blog'
+    
         
   ##################################################################
   # ##########################
@@ -80,10 +95,12 @@ define (require, exports, module) ->
           
   module.exports =
     sidebar: sidebar
-    meeting_calendar: meeting_calendar
     main_bumblr_view: main_bumblr_view
     bumblr_dashboard_view: bumblr_dashboard_view
+    simple_blog_list: simple_blog_list
     simple_blog_info: simple_blog_info
     simple_post_view: simple_post_view
+    simple_post_page_view: simple_post_page_view
+    new_blog_form_view: new_blog_form_view
     
     

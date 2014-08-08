@@ -97,6 +97,13 @@ define (require, exports, module) ->
         window.blogView = view
         MSGBUS.events.trigger 'rcontent:show', view
         Util.scroll_top_fast()
-      
+
+    add_new_blog: () ->
+      console.log 'add_new_blog called'
+      @make_sidebar()
+      view = new Views.NewBlogFormView
+      MSGBUS.events.trigger 'rcontent:show', view
+      Util.scroll_top_fast()
+            
   module.exports = Controller
   

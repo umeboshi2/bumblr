@@ -3,6 +3,7 @@ define (require, exports, module) ->
   MSGBUS = require 'msgbus'
   Marionette = require 'marionette'
 
+  FormViews = require 'views/formviews'
   Templates = require 'demoapp/templates'
   Models = require 'demoapp/models'
   BaseModels = require 'models'
@@ -55,9 +56,41 @@ define (require, exports, module) ->
   class SimpleBlogInfoView extends Backbone.Marionette.ItemView
     template: Templates.simple_blog_info
 
-  class SimpleBlogListView extends Backbone.Marionette.CollectionView
+  class SimpleBlogListView extends Backbone.Marionette.CompositeView
     childView: SimpleBlogInfoView
+    template: Templates.simple_blog_list
     
+  class NewBlogFormView extends FormViews.FormView
+    template: Templates.new_blog_form_view
+    ui:
+      blog_name: '[name="blog_name"]'
+
+    updateModel: ->
+      collection = MSGBUS.reqres.request 'bumblr:get_local_blogs'
+      collection.add_blog @ui.blog_name.val()
+
+    saveModel: ->
+      console.log 'called saveModel'
+      collection = MSGBUS.reqres.request 'bumblr:get_local_blogs'
+      collection.save()
+
+    onSuccess: ->
+      console.log 'onSuccess called'
+      r = new Backbone.Router
+      r.navigate '#demo/listblogs', trigger:true
+  
+    createModel: ->
+      #collection = MSGBUS.reqres.request 'bumblr:get_local_blogs'
+      #console.log collection
+      #newmodel = collection.create()
+      #window.newmodel = newmodel
+      #return newmodel
+      return new Backbone.Model url:'/'
+      
+        
+      
+      
+        
                 
   class MainBumblrView extends Backbone.Marionette.ItemView
     template: Templates.main_bumblr_view
@@ -72,17 +105,28 @@ define (require, exports, module) ->
   class SimpleBlogPostView extends Backbone.Marionette.ItemView
     template: Templates.simple_post_view
     #tagName: 'span'
-    className: 'col-md-4'
+    className: 'col-md-2'
     
-  class BlogPostListView extends Backbone.Marionette.CollectionView
+  class BlogPostListView extends Backbone.Marionette.CompositeView
+    template: Templates.simple_post_page_view
     childView: SimpleBlogPostView
     className: 'row'
+    events:
+      'click #next-page-button': 'get_next_page'
+      'click #prev-page-button': 'get_prev_page'
 
+    get_next_page: () ->
+      @collection.getNextPage()
+
+    get_prev_page: () ->
+      @collection.getPreviousPage()
+      
   module.exports =
     SideBarView: SideBarView
     MainBumblrView: MainBumblrView
     BumblrDashboardView: BumblrDashboardView
     SimpleBlogListView: SimpleBlogListView
     BlogPostListView: BlogPostListView
+    NewBlogFormView: NewBlogFormView
     
     

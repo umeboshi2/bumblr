@@ -102,23 +102,47 @@ define (require, exports, module) ->
     url: () ->
       baseURL + '/' + @id + '/posts/photo' + '?callback=?'
       
-  class BlogPosts extends Backbone.Collection
+  class BlogPosts extends PageableCollection
+    mode: 'server'
+    full: true
     baseURL: baseURL
     url: () ->
-      url = @baseURL + '/blog/' + @base_hostname + '/posts/photo?api_key='
-      url = url + @api_key + '&callback=?'
+      #url = @baseURL + '/blog/' + @base_hostname + '/posts/photo?api_key='
+      #url = url + @api_key + '&callback=?'
+      url = @baseURL + '/blog/' + @base_hostname 
+      url = url + '/posts/photo?api_key=' + @api_key
       return url
+    fetch: (options) ->
+      options || options = {}
+      data = (options.data || {})
+      current_page = @state.currentPage
+      offset = current_page * @state.pageSize
+      options.offset = offset
+      options.dataType = 'jsonp'
+      super options
+      
     parse: (response) ->
-      response.response.posts
+      total_posts = response.response.total_posts
+      @state.totalRecords = total_posts
+      super response.response.posts
 
+    state:
+      firstPage: 0
+      pageSize: 8
+      
+    queryParams:
+      pageSize: 'limit'
+      offset: () ->
+        @state.currentPage * @state.pageSize
+        
   make_blog_post_collection = (base_hostname) ->
     settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
     api_key = settings.get 'consumer_key'
     bp = new BlogPosts
     bp.api_key = api_key
     bp.base_hostname = base_hostname
-    console.log 'bp.api_key is ' + bp.api_key
-    console.log 'bp.url() is ' + bp.url()
+    #console.log 'bp.api_key is ' + bp.api_key
+    #console.log 'bp.url() is ' + bp.url()
     return bp
     
   req = 'bumblr:make_blog_post_collection'

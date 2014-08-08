@@ -71,9 +71,12 @@ define (require, exports, module) ->
 
   class SimpleBlogPostView extends Backbone.Marionette.ItemView
     template: Templates.simple_post_view
+    #tagName: 'span'
+    className: 'col-md-4'
     
   class BlogPostListView extends Backbone.Marionette.CollectionView
     childView: SimpleBlogPostView
+    className: 'row'
 
   module.exports =
     SideBarView: SideBarView

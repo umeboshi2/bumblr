@@ -8,7 +8,8 @@ define (require, exports, module) ->
   Models = require 'demoapp/models'
   
   Collections = require 'demoapp/collections'
-
+  Util = require 'util'
+  
   fullCalendar = require 'fullcalendar'
   #gcal = require 'fc_gcal'
 
@@ -63,29 +64,15 @@ define (require, exports, module) ->
       @make_sidebar()
       view = new Views.MainBumblrView
       MSGBUS.events.trigger 'rcontent:show', view
+      Util.scroll_top_fast()
       
 
     show_dashboard: () ->
       @make_sidebar()
       view = new Views.BumblrDashboardView
       MSGBUS.events.trigger 'rcontent:show', view
+      Util.scroll_top_fast()
         
-    show_calendar: () ->
-      #console.log 'hubby show calendar'
-      @make_sidebar()
-      console.log 'show_calendar'
-      
-    show_meeting: (meeting_id) ->
-      #console.log 'show_meeting called'
-      @make_sidebar()
-      meeting = new Models.MainMeetingModel
-        id: meeting_id
-      response = meeting.fetch()
-      response.done =>
-        view = new Views.ShowMeetingView
-          model: meeting
-        MSGBUS.events.trigger 'rcontent:show', view
-
     list_blogs: () ->
       console.log 'list_blogs called;'
       @make_sidebar()
@@ -93,17 +80,9 @@ define (require, exports, module) ->
       view = new Views.SimpleBlogListView
         collection: blogs
       MSGBUS.events.trigger 'rcontent:show', view
+      Util.scroll_top_fast()
       
       
-    list_meetings: () ->
-      console.log 'list_meetings called'
-      @make_sidebar()
-      view = new Views.MeetingListView
-        collection: meetings
-      if meetings.length == 0
-        meetings.fetch()
-      MSGBUS.events.trigger 'rcontent:show', view
-
     view_blog: (blog_id) ->
       console.log 'view blog called for ' + blog_id
       @make_sidebar()
@@ -117,15 +96,7 @@ define (require, exports, module) ->
           collection: collection
         window.blogView = view
         MSGBUS.events.trigger 'rcontent:show', view
+        Util.scroll_top_fast()
       
-    edit_page: (page_id) ->
-      @make_sidebar()
-      page = MSGBUS.reqres.request 'wiki:pagecontent', page_id
-      view = new Views.EditPageView
-        model: page
-      MSGBUS.events.trigger 'rcontent:show', view
-      
-      
-              
   module.exports = Controller
   

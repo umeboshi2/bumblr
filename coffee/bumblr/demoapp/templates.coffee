@@ -64,13 +64,16 @@ define (require, exports, module) ->
       a href:'#demo/viewblog/' + blog.name, blog.name
 
   simple_post_view = renderable (post) ->
-    span ->
-      a href:post.post_url, target:'_blank', post.blog_name
-    span ->
-      for photo in post.photos
+    div '.alert.alert-success', ->
+      p ->
+        a href:post.post_url, target:'_blank', post.blog_name
+      span ->
+        #for photo in post.photos
+        photo = post.photos[0]
         for size in photo.alt_sizes
-          if size.width == 400
+          if size.width == 250
             img src:size.url, href:post.url
+        
   ##################################################################
   # ##########################
   ##################################################################    

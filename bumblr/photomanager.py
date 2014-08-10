@@ -37,7 +37,12 @@ def chunks(l, n):
 
 def get_md5sum_from_tumblr_headers(headers):
     try:
-        return headers['etag'][1:-1]
+        etag = headers['etag'][1:-1]
+        if len(etag) != 32:
+            print "ETAG is nonconforming: %s" % etag
+            return None
+        else:
+            return etag
     except KeyError:
         return None
 
@@ -110,7 +115,7 @@ def download_url(utuple):
             etag = get_md5sum_from_tumblr_headers(r.headers)
             lfile = repos.open_file(basename)
             md5sum = get_md5sum_for_file(lfile)
-            if etag != md5sum:
+            if etag != md5sum and etag is not None:
                 print "Bad md5sum found for %s" % url
                 os.remove(repos.filename(basename))
             else:
@@ -129,11 +134,13 @@ def download_url(utuple):
                 md5.update(chunk)
         etag = get_md5sum_from_tumblr_headers(r.headers)
         md5sum = md5.hexdigest()
-        if md5sum != etag:
+        if md5sum != etag and etag is not None:
             os.remove(filename)
             print etag, 'etag'
             print md5sum, 'md5sum'
             raise RuntimeError, "Bad checksum with %s" % url
+        elif etag is None:
+            print "checksum of %s is unavailable" % url
     return url_id, r.status_code, md5sum
 
     

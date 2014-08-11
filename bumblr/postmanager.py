@@ -5,6 +5,8 @@ import requests
 
 from bumblr.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
 from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
+from bumblr.database import TumblrBlogPost
+
 from bumblr.photomanager import TumblrPhotoManager
 
 
@@ -38,7 +40,7 @@ class TumblrPostManager(object):
         self.session = session
         self.client = None
         self.client_info = None
-        self.limit = 50
+        self.limit = 20
         self.model = TumblrPost
         self.photos = TumblrPhotoManager(self.session)
         
@@ -90,7 +92,7 @@ class TumblrPostManager(object):
         self.update_thumbnails(p.id, post=p)
         
 
-    def _get_all_posts(self, blogname, total_desired, offset):
+    def _get_all_posts(self, blogname, total_desired, offset, blog_id):
         limit = self.limit
         current_post_count = 0
         posts = self.client.posts(blogname, offset=offset, limit=limit)
@@ -108,8 +110,22 @@ class TumblrPostManager(object):
             if len(these_posts) != total_post_count:
                 raise RuntimeError, "Too few posts %d" % len(these_posts)
         while current_post_count < total_post_count:
-            while len(these_posts):
+            ignored_post_count = 0
+            batch_length = len(these_posts)
+            while len(these_posts) and total_post_count:
                 post = these_posts.pop()
+                if blog_id is not None:
+                    blogpost_query = self.session.query(TumblrBlogPost)
+                    blogpost = blogpost_query.get((blog_id, post['id']))
+                    if blogpost is not None:
+                        ignored_post_count += 1
+                        #msg = "Ignoring this post %d %d" 
+                        #print msg % (blog_id, post['id'])
+                if batch_length == ignored_post_count:
+                    print "We think we have it..... %d %d" % (len(these_posts), ignored_post_count)
+                    total_post_count = 0
+                    
+
                 current_post_count += 1
                 if self.get(post['id']) is None:
                     self.add_post(post)
@@ -122,8 +138,9 @@ class TumblrPostManager(object):
             
         
 
-    def get_all_posts(self, blogname, total_desired=None, offset=0):
-        self._get_all_posts(blogname, total_desired, offset)
+    def get_all_posts(self, blogname, total_desired=None, offset=0,
+                      blog_id=None):
+        self._get_all_posts(blogname, total_desired, offset, blog_id)
 
     def update_photos(self, post_id, post=None):
         if post is None:

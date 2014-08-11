@@ -5,6 +5,7 @@ import transaction
 import requests
 from sqlalchemy import not_
 from sqlalchemy import exists
+from sqlalchemy import func
 
 from bumblr.database import TumblrPost, TumblrPostPhoto
 from bumblr.database import TumblrBlog, TumblrBlogPost
@@ -117,15 +118,57 @@ class TumblrBlogManager(object):
             b.updated_local = datetime.now()
             self.session.add(b)
         return self.session.merge(b)
-    
-    def add_blog(self, blog_name):
+
+    def update_blog_object(self, blog_id, blogdata):
+        object_updated = False
+        with transaction.manager:
+            b = self._query().get(blog_id)
+            if b is None:
+                raise RuntimeError, "No object to update"
+            for key in BLOGKEYS:
+                value = blogdata[key]
+                dbvalue = getattr(b, key)
+                if value != dbvalue:
+                    msg = "%s.%s has changed from %s ------> %s"
+                    print msg % (b.name, key, dbvalue, value)
+                    setattr(b, key, value)
+                    object_updated = True
+            if object_updated:
+                self.session.add(b)
+        if object_updated:
+            return self.session.merge(b)
+
+    def _get_blog_info(self, blog_name):
         info = self.client.blog_info(blog_name)
         if 'blog' not in info:
             if info['meta']['status'] == 404:
                 print "%s not found" % blog_name
                 return None
+        return info
+    
+    def add_blog(self, blog_name):
+        info = self._get_blog_info(blog_name)
         return self.add_blog_object(info['blog'])
+
+    def update_blog_info(self, blog_id):
+        b = self._query().get(blog_id)
+        info = self._get_blog_info(b.name)['blog']
+        newb = self.update_blog_object(b.id, info)
+        if newb is None:
+            print "%s not updated." % b.name
+        self.update_posts_for_blog('ignored', blog_id)
+        stmt = ~exists().where(TumblrBlogPost.post_id==TumblrPost.id)
+        last_post_query = self.session.query(func.max(TumblrBlogPost.post_id))
+        last_post_id = last_post_query.one()[0]
+        self.posts.get_all_posts(b.name, blog_id=b.id)
             
+    def update_all_blog_info(self):
+        for b in self._query():
+            self.update_blog_info(b.id)
+            
+        
+    
+    
     def update_posts_for_blog(self, name, blog_id=None):
         if blog_id is None:
             blog = self.get_by_name(name)
@@ -200,8 +243,10 @@ class TumblrBlogManager(object):
         blogs = self._query().all()
         random.shuffle(blogs)
         for b in blogs:
+            print "updating posts for %s" % b.name
+            self.update_posts_for_blog('ignore', blog_id=b.id)
             print "sampling %d posts from %s" % (amount, b.name)
-            self.posts.get_all_posts(b.name, amount)
+            self.posts.get_all_posts(b.name, amount, blog_id=b.id)
         
         
     def sample_blog_likes(self, amount):
@@ -220,9 +265,12 @@ class TumblrBlogManager(object):
         if not os.path.isdir(blogpath):
             os.makedirs(blogpath)
         current_blog_files = os.listdir(blogpath)
+        _bases = [x.split('.')[0] for x in current_blog_files]
+        current_blog_file_ids = [x.split('-')[1] for x in _bases]
         repos = self.posts.photos.repos
         q = self.session.query(TumblrPost).join(TumblrBlogPost)
         q = q.filter(TumblrBlogPost.blog_id == blog.id)
+        q = q.filter(not_(TumblrBlogPost.post_id.in_(current_blog_file_ids)))
         q = q.order_by(TumblrPost.id)
         for post in q:
             if post.type != 'photo':

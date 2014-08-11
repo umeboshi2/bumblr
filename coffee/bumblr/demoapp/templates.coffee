@@ -63,11 +63,11 @@ define (require, exports, module) ->
       a href:'#demo/viewblog/' + blog.name, blog.name
 
   simple_post_page_view = renderable () ->
-    div ->
+    div '#posts-container', ->
       div '.mytoolbar', ->
         div '#prev-page-button.btn.btn-default.pull-left', '<-'
         div '#next-page-button.btn.btn-default.pull-right', '->'
-      div '#posts-container'
+      #div '#posts-container'
       
   simple_post_view = renderable (post) ->
     div '.alert.alert-success', ->
@@ -77,7 +77,7 @@ define (require, exports, module) ->
         #for photo in post.photos
         photo = post.photos[0]
         for size in photo.alt_sizes
-          if size.width == 100
+          if size.width == 250
             img src:size.url, href:post.url
 
   new_blog_form_view = renderable (model) ->

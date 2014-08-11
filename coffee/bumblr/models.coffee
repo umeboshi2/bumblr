@@ -107,11 +107,10 @@ define (require, exports, module) ->
     full: true
     baseURL: baseURL
     url: () ->
-      #url = @baseURL + '/blog/' + @base_hostname + '/posts/photo?api_key='
-      #url = url + @api_key + '&callback=?'
       url = @baseURL + '/blog/' + @base_hostname 
       url = url + '/posts/photo?api_key=' + @api_key
       return url
+      
     fetch: (options) ->
       options || options = {}
       data = (options.data || {})
@@ -128,7 +127,7 @@ define (require, exports, module) ->
 
     state:
       firstPage: 0
-      pageSize: 8
+      pageSize: 2
       
     queryParams:
       pageSize: 'limit'
@@ -169,12 +168,6 @@ define (require, exports, module) ->
   MSGBUS.reqres.setHandler 'bumblr:get_app_settings', ->
     bumblr_settings
       
-  client = new TumblrClient
-  settings = MSGBUS.reqres.request 'bumblr:get_app_settings'
-  client.credentials = settings.attributes
-  MSGBUS.reqres.setHandler 'bumblr:get_tumblr_client', ->
-    client
-    
   local_blogs = new LocalBlogCollection
   MSGBUS.reqres.setHandler 'bumblr:get_local_blogs', ->
     local_blogs

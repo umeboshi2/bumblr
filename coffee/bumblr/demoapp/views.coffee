@@ -80,11 +80,6 @@ define (require, exports, module) ->
       r.navigate '#demo/listblogs', trigger:true
   
     createModel: ->
-      #collection = MSGBUS.reqres.request 'bumblr:get_local_blogs'
-      #console.log collection
-      #newmodel = collection.create()
-      #window.newmodel = newmodel
-      #return newmodel
       return new Backbone.Model url:'/'
       
         
@@ -105,7 +100,7 @@ define (require, exports, module) ->
   class SimpleBlogPostView extends Backbone.Marionette.ItemView
     template: Templates.simple_post_view
     #tagName: 'span'
-    className: 'col-md-2'
+    className: 'col-sm-5'
     
   class BlogPostListView extends Backbone.Marionette.CompositeView
     template: Templates.simple_post_page_view
@@ -120,7 +115,18 @@ define (require, exports, module) ->
 
     get_prev_page: () ->
       @collection.getPreviousPage()
-      
+
+    onDomRefresh: () ->
+      console.log 'onDomRefresh called on BlogPostListView'
+      container = $ 'body'
+      window.container = container
+      container.keydown (event_object) =>
+        console.log 'keydown' + event_object
+        window.eo = event_object
+        if event_object.keyCode == 65
+          @get_prev_page()
+        if event_object.keyCode == 90
+          @get_next_page()
   module.exports =
     SideBarView: SideBarView
     MainBumblrView: MainBumblrView

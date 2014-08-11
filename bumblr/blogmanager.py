@@ -150,6 +150,11 @@ class TumblrBlogManager(object):
         info = self._get_blog_info(blog_name)
         return self.add_blog_object(info['blog'])
 
+    def _update_blog_info(self, blog_id):
+        b = self._query().get(blog_id)
+        info = self._get_blog_info(b.name)['blog']
+        return self.update_blog_object(b.id, info)
+        
     def update_blog_info(self, blog_id):
         b = self._query().get(blog_id)
         info = self._get_blog_info(b.name)['blog']
@@ -167,8 +172,6 @@ class TumblrBlogManager(object):
             self.update_blog_info(b.id)
             
         
-    
-    
     def update_posts_for_blog(self, name, blog_id=None):
         if blog_id is None:
             blog = self.get_by_name(name)
@@ -245,9 +248,18 @@ class TumblrBlogManager(object):
         for b in blogs:
             print "updating posts for %s" % b.name
             self.update_posts_for_blog('ignore', blog_id=b.id)
-            print "sampling %d posts from %s" % (amount, b.name)
-            self.posts.get_all_posts(b.name, amount, blog_id=b.id)
-            self.update_posts_for_blog('ignore', blog_id=b.id)
+            info = self._get_blog_info(b.name)['blog']
+            newb = self.update_blog_object(b.id, info)
+            if newb is not None:
+                b = newb
+                print "Blog %s updated" % b.name
+            q = self.session.query(TumblrBlogPost)
+            q = q.filter_by(blog_id=b.id)
+            local_post_count = q.count()
+            if b.posts > local_post_count:
+                print "sampling %d posts from %s" % (amount, b.name)
+                self.posts.get_all_posts(b.name, amount, blog_id=b.id)
+                self.update_posts_for_blog('ignore', blog_id=b.id)
         
         
     def sample_blog_likes(self, amount):

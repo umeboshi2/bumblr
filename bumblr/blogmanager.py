@@ -247,6 +247,7 @@ class TumblrBlogManager(object):
             self.update_posts_for_blog('ignore', blog_id=b.id)
             print "sampling %d posts from %s" % (amount, b.name)
             self.posts.get_all_posts(b.name, amount, blog_id=b.id)
+            self.update_posts_for_blog('ignore', blog_id=b.id)
         
         
     def sample_blog_likes(self, amount):

@@ -426,8 +426,8 @@ class TumblrPhotoManager(object):
         qfun = self._query
         urlclass = TumblrPhotoUrl
         if thumbs:
-            chunksize = 300
-            processes = 10
+            chunksize = 100
+            processes = 5
             qfun = self._thumb_query
             urlclass = TumblrThumbnailUrl
         limit = 10000

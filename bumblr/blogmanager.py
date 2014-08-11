@@ -248,7 +248,11 @@ class TumblrBlogManager(object):
         for b in blogs:
             print "updating posts for %s" % b.name
             self.update_posts_for_blog('ignore', blog_id=b.id)
-            info = self._get_blog_info(b.name)['blog']
+            info = self._get_blog_info(b.name)
+            if info not None:
+                info = info['blog']
+            else:
+                continue
             newb = self.update_blog_object(b.id, info)
             if newb is not None:
                 b = newb

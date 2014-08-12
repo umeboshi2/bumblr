@@ -51,6 +51,9 @@ class TumblrPostManager(object):
     def _query(self):
         return self.session.query(TumblrPost)
 
+    def query(self):
+        return self.session.query(TumblrPost)
+    
     def blogname_query(self, name):
         return self._query().filter_by(blog_name=name)
     

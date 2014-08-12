@@ -86,6 +86,10 @@ class TumblrBlogManager(object):
         
     def _query(self):
         return self.session.query(self.model)
+
+    def query(self):
+        return self._query()
+    
     
     def get(self, id):
         return self.session.query(self.model).get(id)
@@ -133,8 +137,12 @@ class TumblrBlogManager(object):
                     print msg % (b.name, key, dbvalue, value)
                     setattr(b, key, value)
                     object_updated = True
-            if object_updated:
-                self.session.add(b)
+            updated_remote = datetime.fromtimestamp(blogdata['updated'])
+            if b.updated_remote != updated_remote:
+                b.updated_remote = updated_remote
+                object_updated = True
+            b.updated_local = datetime.now()    
+            self.session.add(b)
         if object_updated:
             return self.session.merge(b)
 
@@ -241,13 +249,14 @@ class TumblrBlogManager(object):
             remaining = total_blog_count - blog_count
             print '%d blogs remaining.' % remaining
 
-    def sample_blogs(self, amount):
+    def sample_blogs(self, amount, update_first=False):
         import random
         blogs = self._query().all()
         random.shuffle(blogs)
         for b in blogs:
-            print "updating posts for %s" % b.name
-            self.update_posts_for_blog('ignore', blog_id=b.id)
+            if update_first:
+                print "updating posts for %s" % b.name
+                self.update_posts_for_blog('ignore', blog_id=b.id)
             info = self._get_blog_info(b.name)
             if info is not None:
                 info = info['blog']
@@ -257,13 +266,14 @@ class TumblrBlogManager(object):
             if newb is not None:
                 b = newb
                 print "Blog %s updated" % b.name
-            q = self.session.query(TumblrBlogPost)
-            q = q.filter_by(blog_id=b.id)
-            local_post_count = q.count()
-            if b.posts > local_post_count:
+                q = self.session.query(TumblrBlogPost)
+                q = q.filter_by(blog_id=b.id)
                 print "sampling %d posts from %s" % (amount, b.name)
                 self.posts.get_all_posts(b.name, amount, blog_id=b.id)
                 self.update_posts_for_blog('ignore', blog_id=b.id)
+            else:
+                print "Skipping", b.name
+                
         
         
     def sample_blog_likes(self, amount):

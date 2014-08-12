@@ -186,7 +186,6 @@ class TumblrBlogManager(object):
         #blogposts = blogposts.filter_by(blog_id=blog.id)
         #blogposts = blogposts.subquery('blogposts')
         #q = q.filter(not_(TumblrPost.id.in_(blogposts)))
-        #q = q.filter(not_(exists(blogposts)))
         stmt = ~exists().where(TumblrBlogPost.post_id==TumblrPost.id)
         q = q.filter(stmt)
 
@@ -274,8 +273,17 @@ class TumblrBlogManager(object):
             print "sampling %d likes from %s" % (amount, b.name)
             self.posts.get_blog_likes(b.name, amount)
 
+    def _photoquery(self, post_id, thumbnails=False):
+        urlmodel = TumblrPhotoUrl
+        postmodel = TumblrPostPhoto
+        if thumbnails:
+            urlmodel = TumblrThumbnailUrl
+            postmodel = TumblrPostThumbnail
+        q = self.session.query(urlmodel).join(postmodel)
+        return q.filter(postmodel.post_id == post_id)
 
-    def make_blog_directory(self, blogname, blogpath):
+
+    def _make_blog_directory(self, blogname, blogpath, thumbnails=False):
         blog = self.get_by_name(blogname)
         if blog is None:
             raise RuntimeError, "%s doesn't exist." % blogname
@@ -292,7 +300,7 @@ class TumblrBlogManager(object):
         for post in q:
             if post.type != 'photo':
                 continue
-            photoquery = self.session.query(TumblrPhotoUrl).join(TumblrPostPhoto).filter(TumblrPostPhoto.post_id == post.id)
+            photoquery = self._photoquery(post.id, thumbnails=thumbnails)
             for tpu in photoquery:
                 url = tpu.url
                 basename = os.path.basename(url)
@@ -300,7 +308,7 @@ class TumblrBlogManager(object):
                     if len(basename.split('.')) == 2:
                         ext = basename.split('.')[1]
                     else:
-                        print "WARNING! BAD GUESS"
+                        print "WARNING! BAD GUESS", basename
                         ext = '.jpg'
                     filebase = '%d-%d.%s' % (post.id, tpu.id, ext)
                     filename = os.path.join(blogpath, filebase)
@@ -308,41 +316,11 @@ class TumblrBlogManager(object):
                     if filebase not in current_blog_files:
                         print "Linking", filename
                         os.link(repos.filename(basename), filename)
-                    
+
+
+    def make_blog_directory(self, blogname, blogpath):
+        self._make_blog_directory(blogname, blogpath, thumbnails=False)
+        
                 
     def make_thumb_directory(self, blogname, blogpath):
-        blog = self.get_by_name(blogname)
-        if blog is None:
-            raise RuntimeError, "%s doesn't exist." % blogname
-        if not os.path.isdir(blogpath):
-            os.makedirs(blogpath)
-        current_blog_files = os.listdir(blogpath)
-        repos = self.posts.photos.repos
-        q = self.session.query(TumblrPost).join(TumblrBlogPost)
-        q = q.filter(TumblrBlogPost.blog_id == blog.id)
-        q = q.order_by(TumblrPost.id)
-        for post in q:
-            if post.type != 'photo':
-                continue
-            photoquery = self.session.query(TumblrThumbnailUrl).join(TumblrPostThumbnail).filter(TumblrPostThumbnail.post_id == post.id)
-            for tpu in photoquery:
-                url = tpu.url
-                basename = os.path.basename(url)
-                if repos.file_exists(basename):
-                    if len(basename.split('.')) == 2:
-                        ext = basename.split('.')[1]
-                    else:
-                        print "WARNING! BAD GUESS"
-                        ext = '.jpg'
-                    filebase = '%d-%d.%s' % (post.id, tpu.id, ext)
-                    filename = os.path.join(blogpath, filebase)
-                    #if not os.path.isfile(filename):
-                    if filebase not in current_blog_files:
-                        print "Linking", filename
-                        os.link(repos.filename(basename), filename)
-                    
-                
-            
-    def foobar(self):
-        pass
-    
+        self._make_blog_directory(blogname, blogpath, thumbnails=True)

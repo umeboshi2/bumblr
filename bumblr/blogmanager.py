@@ -86,13 +86,27 @@ class TumblrBlogManager(object):
         
     def _query(self):
         return self.session.query(self.model)
-
-    def query(self):
-        return self._query()
     
+    def query(self):
+        return self.session.query(self.model)
     
     def get(self, id):
         return self.session.query(self.model).get(id)
+    
+    def _range_filter(self, query, start, end):
+        query = query.filter(self.model.updated_remote >= start)
+        query = query.filter(self.model.updated_remote <= end)
+        return query
+    
+    def get_ranged_blogs(self, start, end, timestamps=False):
+        if timestamps:
+            start, end = convert_range_to_datetime(start, end)
+        q = self.session.query(self.model)
+        q = self._range_filter(q, start, end)
+        return q.all()
+    
+    
+    
 
     # we are certain name is unique
     def get_by_name(self, name):

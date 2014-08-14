@@ -11,8 +11,27 @@ from sqlalchemy import Enum
 from sqlalchemy import DateTime
 
 from sqlalchemy.orm import relationship, backref
-
 from sqlalchemy.ext.declarative import declarative_base
+
+# http://stackoverflow.com/questions/4617291/how-do-i-get-a-raw-compiled-sql-query-from-a-sqlalchemy-expression
+from sqlalchemy.sql import compiler
+from psycopg2.extensions import adapt as sqlescape
+
+
+def compile_query(query):
+    dialect = query.session.bind.dialect
+    statement = query.statement
+    comp = compiler.SQLCompiler(dialect, statement)
+    comp.compile()
+    enc = dialect.encoding
+    params = {}
+    for k, v in comp.params.iteritems():
+        if isinstance(v, unicode):
+            v = v.encode(enc)
+        params[k] = sqlescape(v)
+    return (comp.string.encode(enc) % params).decode(enc)
+
+    
 
 Base = declarative_base()
 

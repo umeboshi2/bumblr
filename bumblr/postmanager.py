@@ -6,6 +6,7 @@ import requests
 from bumblr.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
 from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
 from bumblr.database import TumblrBlogPost
+from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
 
 from bumblr.photomanager import TumblrPhotoManager
 
@@ -73,7 +74,16 @@ class TumblrPostManager(object):
         q = self.get_all_ids_query(with_blog_names=with_blog_names,
                                    blog=blog)
         return q.all()
-    
+
+    def get_post_photos_query(self, post_id):
+        stmt = self.session.query(TumblrPostPhoto.photo_id)
+        stmt = stmt.filter_by(post_id=post_id)
+        post_photos = stmt.subquery('post_photos')
+        q = self.session.query(TumblrPhotoUrl)
+        return q.filter(TumblrPhotoUrl.id.in_(post_photos))
+
+    def get_post_photos(self, post_id):
+        return self.get_post_photos_query(post_id).all()
     
     def add_post(self, post):
         if self.get(post['id']) is not None:

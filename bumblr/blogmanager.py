@@ -14,6 +14,7 @@ from bumblr.database import TumblrThumbnailUrl, TumblrPostThumbnail
 
 from bumblr.database import BlogProperty, TumblrBlogProperty
 from bumblr.database import DEFAULT_BLOG_PROPERTIES
+from bumblr.database import compile_query
 from bumblr.postmanager import TumblrPostManager
 
 BLOGKEYS = ['name', 'title', 'url', 'description', 'posts',
@@ -83,7 +84,10 @@ class TumblrBlogManager(object):
         self.client = client
         self.posts.set_client(client)
         self.client_info = client.info()
-        
+
+    def compile_query(self, query):
+        return compile_query(query)
+
     def _query(self):
         return self.session.query(self.model)
     
@@ -115,6 +119,35 @@ class TumblrBlogManager(object):
         if not len(rows):
             return None
         return rows.pop()
+
+    def get_blog_posts_query(self, name, blog=None, type=None):
+        if blog is None:
+            blog = self.get_by_name(name)
+        q = self.session.query(TumblrPost).join(TumblrBlogPost)
+        q = q.filter(TumblrBlogPost.blog_id==blog.id)
+        if type is not None:
+            q = q.filter_by(type=type)
+        q = q.order_by(TumblrPost.id)
+        return q
+            
+    def get_blog_posts(self, name, offset=0, limit=20, blog=None, type=None):
+        q = self.get_blog_posts_query(name, blog=blog, type=type)
+        q = q.offset(offset).limit(limit)
+        return q.all()
+
+    def get_post_photos(self, post_id):
+        return self.posts.get_post_photos(post_id)
+
+    def get_post_photos_and_paths(self, post_id):
+        photos = self.get_post_photos(post_id)
+        repos = self.posts.photos.repos
+        for photo in photos:
+            basename = os.path.basename(photo.url)
+            photo.filename = repos.filename(basename)
+        return photos
+    
+    
+    
     
     def get_all_ids_query(self):
         return self.session.query(self.model.id).order_by(self.model.id)

@@ -135,11 +135,11 @@ class TumblrBlogManager(object):
         q = q.offset(offset).limit(limit)
         return q.all()
 
-    def get_post_photos(self, post_id):
-        return self.posts.get_post_photos(post_id)
+    def get_post_photos(self, post_id, thumbs=False):
+        return self.posts.get_post_photos(post_id, thumbs=thumbs)
 
-    def get_post_photos_and_paths(self, post_id):
-        photos = self.get_post_photos(post_id)
+    def get_post_photos_and_paths(self, post_id, thumbs=False):
+        photos = self.get_post_photos(post_id, thumbs=thumbs)
         repos = self.posts.photos.repos
         for photo in photos:
             basename = os.path.basename(photo.url)

@@ -75,15 +75,18 @@ class TumblrPostManager(object):
                                    blog=blog)
         return q.all()
 
-    def get_post_photos_query(self, post_id):
+    def get_post_photos_query(self, post_id, thumbs=False):
+        urlclass = TumblrPhotoUrl
+        if thumbs:
+            urlclass = TumblrThumbnailUrl
         stmt = self.session.query(TumblrPostPhoto.photo_id)
         stmt = stmt.filter_by(post_id=post_id)
         post_photos = stmt.subquery('post_photos')
-        q = self.session.query(TumblrPhotoUrl)
-        return q.filter(TumblrPhotoUrl.id.in_(post_photos))
+        q = self.session.query(urlclass)
+        return q.filter(urlclass.id.in_(post_photos))
 
-    def get_post_photos(self, post_id):
-        return self.get_post_photos_query(post_id).all()
+    def get_post_photos(self, post_id, thumbs=False):
+        return self.get_post_photos_query(post_id, thumbs=thumbs).all()
     
     def add_post(self, post):
         if self.get(post['id']) is not None:

@@ -454,3 +454,17 @@ class TumblrPhotoManager(object):
         
     def update_all_photos(self, localdir=None):
         self._update_all_photos(thumbs=False)
+
+
+    def photo_md5sum_query(self):
+        return self.session.query(TumblrPhotoUrlMd5sum)
+    
+    def thumbnail_md5sum_query(self):
+        return self.session.query(TumblrThumbnailUrlMd5sum)
+    
+    def photo_join_query(self):
+        return self.session.query(TumblrPhotoUrl, TumblrPhotoUrlMd5sum).filter(TumblrPhotoUrl.id==TumblrPhotoUrlMd5sum.id)
+
+    def thumbnail_join_query(self):
+        return self.session.query(TumblrThumbnailUrl, TumblrThumbnailUrlMd5sum).filter(TumblrThumbnailUrl.id==TumblrThumbnailUrlMd5sum.id)
+    

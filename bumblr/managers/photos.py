@@ -55,6 +55,28 @@ class PhotoManager(BaseManager):
         self.repos = FileRepos(dirname)
             
 
-    def add_photo(self, photo):
-        
+    def _add_size(self, sizedata):
+        pu = PhotoUrl()
+        for key in ['url', 'width', 'height']:
+            setattr(pu, key, pudata[key])
+        self.session.add(pu)
+        pu = self.session.merge(pu)
+        ps = PhotoSize()
+        ps.photo_id = p.id
+        ps.url_id = pu.id
+        self.session.add(ps)
+            
     
+    
+        
+    def add_photo(self, photo):
+        sizes = get_photo_sizes(photo)
+        with transaction.manager:
+            p = self.model()
+            p.caption = photo['caption']
+            p.exif = photo['exif']
+            self.session.add(p)
+            p = self.session.merge(p)
+            for size in ['orig', 'thumb', 'smallsquare']:
+                pudata = sizes[size]
+                self._add_size(pudata)

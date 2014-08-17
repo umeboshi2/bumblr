@@ -112,11 +112,17 @@ class BlogPropertyName(Base, SerialBase):
     __tablename__ = 'blog_properties'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200))
-    
-    
+
+
 class Blog(Base, SerialBase):
     __tablename__ = 'bumblr_blogs'
     id = Column(Integer, primary_key=True)
+    
+    
+class BlogInfo(Base, SerialBase):
+    __tablename__ = 'bumblr_blog_info'
+    id = Column(Integer, ForeignKey('bumblr_blogs.id'),
+                primary_key=True)
     name = Column(Unicode(200), unique=True)
     title = Column(Unicode(500))
     url = Column(Unicode(500))
@@ -162,7 +168,7 @@ class PhotoUrl(Base, SerialBase):
     md5sum = Column(String(32))
     request_status = Column(Integer)
     request_head = Column(PickleType)
-    keep_local = Column(Boolean)
+    keep_local = Column(Boolean, default=False)
     filename = Column(String)
 
 class PhotoSize(Base, SerialBase):
@@ -185,6 +191,11 @@ class Post(Base, SerialBase):
     source_title = Column(Unicode)
     liked = Column(Boolean, index=True)
     followed = Column(Boolean, index=True)
+
+class PostContent(Base, SerialBase):
+    __tablename__ = 'bumblr_post_content'
+    id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
     content = Column(PickleType)
 
 class BlogPost(Base, SerialBase):

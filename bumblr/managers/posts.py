@@ -3,11 +3,11 @@ import os
 import transaction
 import requests
 
-from bumblr.database2 import Post
+from bumblr.database2 import Post, PostContent
 from bumblr.database2 import BlogPost
 
 from bumblr.managers.base import BaseManager
-
+from bumblr.managers.photos import PhotoManager
 
 
 POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
@@ -17,16 +17,9 @@ POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
 class PostManager(BaseManager):
     def __init__(self, session):
         super(PostManager, self).__init__(session, Post)
-        self.client = None
-        self.client_info = None
-        self.limit = 20
         # add photo manager
+        self.photos = PhotoManager(self.session)
 
-    def set_client(self, client):
-        self.client = client
-        self.client_info = self.client.info()
-        # set photo manager client
-        
     def blogname_query(self, name):
         return self.query().filter_by(blog_name=name)
     
@@ -47,9 +40,18 @@ class PostManager(BaseManager):
             for key in POSTKEYS:
                 if key in post:
                     setattr(p, key, post[key])
-            p.content = post
             self.session.add(p)
+            p = self.session.merge(p)
+            pc = PostContent()
+            pc.id = p.id
+            pc.content = post
+            self.session.add(pc)
         p = self.session.merge(p)
+        if post['type'] == 'photo':
+            for photo in post['photos']:
+                ph = self.photos.add_photo(photo)
+                print "photo %d for post %d" % (ph.id, p.id)
+        
             
     def _get_all_posts(self, blogname, total_desired, offset, blog_id):
         limit = self.limit

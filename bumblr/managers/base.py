@@ -11,6 +11,9 @@ class BaseManager(object):
     def __init__(self, session, model):
         self.session = session
         self.model = model
+        self.client = None
+        self.client_info = None
+        self.limit = 20
         
     def query(self):
         return self.session.query(self.model)
@@ -33,5 +36,10 @@ class BaseManager(object):
         if limit is not None:
             q = q.limit(limit)
         return q.all()
+
+    def set_client(self, client):
+        self.client = client
+        if self.client_info is None:
+            self.client_info = self.client.info()
     
     

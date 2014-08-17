@@ -16,7 +16,7 @@ POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
 
 class PostManager(BaseManager):
     def __init__(self, session):
-        PostManager.__init__(self, session, Post)
+        super(PostManager, self).__init__(session, Post)
         self.client = None
         self.client_info = None
         self.limit = 20
@@ -50,7 +50,7 @@ class PostManager(BaseManager):
             p.content = post
             self.session.add(p)
         p = self.session.merge(p)
-        
+            
     def _get_all_posts(self, blogname, total_desired, offset, blog_id):
         limit = self.limit
         current_post_count = 0

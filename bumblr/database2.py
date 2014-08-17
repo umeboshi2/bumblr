@@ -104,11 +104,11 @@ del _overthis
 ## Tables                         ##
 ####################################
 class RowCount(Base, SerialBase):
-    __table__ = 'rowcounts'
+    __tablename__ = 'rowcounts'
     table = Column(String, primary_key=True)
     total = Column(BigInteger)
     
-class BlogProperty(Base, SerialBase):
+class BlogPropertyName(Base, SerialBase):
     __tablename__ = 'blog_properties'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200))
@@ -148,13 +148,13 @@ class BlogProperty(Base, SerialBase):
 
 class Photo(Base, SerialBase):
     __tablename__ = 'bumblr_photos'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     caption = Column(Unicode)
     exif = Column(PickleType)
     
 class PhotoUrl(Base, SerialBase):
     __tablename__ = 'bumblr_photo_urls'
-    photo_id = Column(Integer, ForeignKey('bumblr_photos.id'))
+    id = Column(BigInteger, primary_key=True)
     phototype = Column(PhotoType, index=True)
     url = Column(Unicode(500), unique=True)
     width = Column(Integer)
@@ -164,6 +164,13 @@ class PhotoUrl(Base, SerialBase):
     request_head = Column(PickleType)
     keep_local = Column(Boolean)
     filename = Column(String)
+
+class PhotoSize(Base, SerialBase):
+    __tablename__ = 'bumblr_photo_sizes'
+    photo_id = Column(BigInteger, ForeignKey('bumblr_photos.id'),
+                      primary_key=True)
+    url_id = Column(BigInteger, ForeignKey('bumblr_photo_urls.id'),
+                    primary_key=True)
     
     
 class Post(Base, SerialBase):
@@ -201,7 +208,7 @@ class LikedPost(Base, SerialBase):
     post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
                      primary_key=True)
 
-class TumblrMyLikedPost(Base, SerialBase):
+class MyLikedPost(Base, SerialBase):
     __tablename__ = 'bumblr_my_liked_posts'
     post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
                      primary_key=True)

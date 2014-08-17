@@ -3,101 +3,39 @@ import os
 import transaction
 import requests
 
-from bumblr.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
-from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
-from bumblr.database import TumblrBlogPost
-from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
+from bumblr.database2 import Post
+from bumblr.database2 import BlogPost
 
-from bumblr.photomanager import TumblrPhotoManager
+from bumblr.managers.base import BaseManager
+
 
 
 POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
-            'date', 'format', 'liked']
+            'date', 'source_url', 'source_title', 'liked',
+            'followed']
 
-def get_post_photo_urls(photos):
-    photolist = list()
-    for pdata in photos:
-        url = pdata['original_size']['url']
-        photolist.append(url)
-    if not photolist:
-        raise RuntimeError, "Something wrong with photos"
-    return photolist
-
-def get_post_photo_thumbnail_urls(photos):
-    photolist = list()
-    for pdata in photos:
-        thumb = None
-        for psize in pdata['alt_sizes']:
-            if psize['width'] == 100:
-                thumb = psize['url']
-                break
-        photolist.append(thumb)
-    if not photolist:
-        raise RuntimeError, "Something wrong with photos"
-    return photolist
-    
-class TumblrPostManager(object):
+class PostManager(BaseManager):
     def __init__(self, session):
-        self.session = session
+        PostManager.__init__(self, session, Post)
         self.client = None
         self.client_info = None
         self.limit = 20
-        self.model = TumblrPost
-        self.photos = TumblrPhotoManager(self.session)
-        
+        # add photo manager
+
     def set_client(self, client):
         self.client = client
         self.client_info = self.client.info()
-
-    def _query(self):
-        return self.session.query(TumblrPost)
-
-    def query(self):
-        return self.session.query(TumblrPost)
-    
+        # set photo manager client
+        
     def blogname_query(self, name):
-        return self._query().filter_by(blog_name=name)
+        return self.query().filter_by(blog_name=name)
     
-    def get(self, id):
-        return self.session.query(TumblrPost).get(id)
-
-    def get_all_ids_query(self, with_blog_names=False, blog=None):
-        qf = self.session.query
-        if with_blog_names:
-            q = qf(TumblrPost.id, TumblrPost.blog_name)
-        else:
-            q = qf(TumblrPost.id)
-        q = q.order_by(TumblrPost.id)
-        return q
-
-    def get_all_ids(self, with_blog_names=False, blog=None):
-        q = self.get_all_ids_query(with_blog_names=with_blog_names,
-                                   blog=blog)
-        return q.all()
 
     def get_post_photos_query(self, post_id, thumbs=False):
-        urlclass = TumblrPhotoUrl
-        if thumbs:
-            urlclass = TumblrThumbnailUrl
-        stmt = self.session.query(TumblrPostPhoto.photo_id)
-        stmt = stmt.filter_by(post_id=post_id)
-        post_photos = stmt.subquery('post_photos')
-        q = self.session.query(urlclass)
-        return q.filter(urlclass.id.in_(post_photos))
-
-    def get_post_photos(self, post_id, thumbs=False):
-        return self.get_post_photos_query(post_id, thumbs=thumbs).all()
-    
-    def _range_filter(self, query, start, end):
-        query = query.filter(self.model.timestamp >= start)
-        query = query.filter(self.model.timestamp <= end)
-        return query
+        raise NotImplemented, 'FIXME'
     
     def get_ranged_posts(self, start, end):
-        q = self.session.query(self.model)
-        q = self._range_filter(q, start, end)
-        return q.all()
-    
+        raise NotImplemented, 'FIXME'
     
     def add_post(self, post):
         if self.get(post['id']) is not None:
@@ -105,20 +43,14 @@ class TumblrPostManager(object):
             print msg  % (post['id'], post['blog_name'])
             return
         with transaction.manager:
-            p = TumblrPost()
+            p = Post()
             for key in POSTKEYS:
-                setattr(p, key, post[key])
-            if False:
-                for key in ['source_url', 'source_title']:
-                    if key in post:
-                        setattr(p, key, post[key])
+                if key in post:
+                    setattr(p, key, post[key])
             p.content = post
             self.session.add(p)
         p = self.session.merge(p)
-        self.update_photos(p.id, post=p)
-        self.update_thumbnails(p.id, post=p)
         
-
     def _get_all_posts(self, blogname, total_desired, offset, blog_id):
         limit = self.limit
         current_post_count = 0
@@ -142,17 +74,18 @@ class TumblrPostManager(object):
             while len(these_posts) and total_post_count:
                 post = these_posts.pop()
                 if blog_id is not None:
-                    blogpost_query = self.session.query(TumblrBlogPost)
+                    blogpost_query = self.session.query(BlogPost)
                     blogpost = blogpost_query.get((blog_id, post['id']))
                     if blogpost is not None:
                         ignored_post_count += 1
                         #msg = "Ignoring this post %d %d" 
                         #print msg % (blog_id, post['id'])
                 if batch_length == ignored_post_count:
-                    print "We think we have it..... %d %d" % (len(these_posts), ignored_post_count)
+                    msg = "We think we have it..... %d %d"
+                    print msg  % (len(these_posts), ignored_post_count)
+                    # FIXME we need a better method to break
+                    # away
                     total_post_count = 0
-                    
-
                 current_post_count += 1
                 if self.get(post['id']) is None:
                     self.add_post(post)
@@ -163,67 +96,10 @@ class TumblrPostManager(object):
             remaining = total_post_count - current_post_count
             print "%d posts remaining for %s." % (remaining, blogname)
             
-        
-
     def get_all_posts(self, blogname, total_desired=None, offset=0,
                       blog_id=None):
         self._get_all_posts(blogname, total_desired, offset, blog_id)
 
-    def update_photos(self, post_id, post=None):
-        if post is None:
-            post = self.get(post_id)
-        if post is None:
-            return
-        if post.type != 'photo':
-            return
-        photos = get_post_photo_urls(post.content['photos'])
-        for url in photos:
-            if not self.photos.url_exists(url):
-                print "Adding %s to photo urls." % url
-                p = self.photos.add_url(url)
-            else:
-                p = self.photos.get_by_url(url)
-            rel = self.session.query(TumblrPostPhoto).get((post.id, p.id))
-            if rel is None:
-                with transaction.manager:
-                    tpp = TumblrPostPhoto()
-                    tpp.post_id = post.id
-                    tpp.photo_id = p.id
-                    self.session.add(tpp)
-                print "Added relation", post.id, p.id
-            self.photos.update_photo(p.id)
-            
-                
-            
-    def update_thumbnails(self, post_id, post=None):
-        if post is None:
-            post = self.get(post_id)
-        if post is None:
-            return
-        if post.type != 'photo':
-            return
-        photos = get_post_photo_thumbnail_urls(post.content['photos'])
-        for url in photos:
-            if url is None:
-                continue
-            if not self.photos.thumbnail_url_exists(url):
-                print "Adding %s to thumbnail urls." % url
-                p = self.photos.add_thumbnail_url(url)
-            else:
-                p = self.photos.get_thumbnail_by_url(url)
-            if p is None:
-                raise RuntimeError, "Wawsup?"
-            rel = self.session.query(TumblrPostThumbnail).get((post.id, p.id))
-            if rel is None:
-                with transaction.manager:
-                    tpp = TumblrPostThumbnail()
-                    tpp.post_id = post.id
-                    tpp.thumb_id = p.id
-                    self.session.add(tpp)
-                print "Added relation", post.id, p.id
-            self.photos.update_thumbnail(p.id)
-            
-        
     def get_dashboard_posts(self, limit=20, offset=0):
         if self.client is None:
             raise RuntimeError, "Need to set client"
@@ -237,6 +113,7 @@ class TumblrPostManager(object):
             print "%d processed." % (total_posts - len(posts))
 
     def _client_get_likes(self, offset, limit, blog_name=None):
+        raise NotImplemented, 'FIXME'
         if blog_name is None:
             return self.client.likes(offset=offset, limit=limit)
         else:
@@ -244,6 +121,7 @@ class TumblrPostManager(object):
                                           offset=offset, limit=limit)
         
     def _set_liked_post(self, post_id, blog_id=None):
+        raise NotImplemented, 'FIXME'
         with transaction.manager:
             if blog_id is None:
                 model = TumblrMyLikedPost()
@@ -256,6 +134,7 @@ class TumblrPostManager(object):
     
     
     def _get_likes(self, blog_name=None, total_desired=None):
+        raise NotImplemented, 'FIXME'
         if self.client is None:
             raise RuntimeError, "Need to set client"
         offset = 0
@@ -291,18 +170,15 @@ class TumblrPostManager(object):
             print "%d posts remaining." % remaining
             
     def get_my_likes(self, total_desired=None):
+        raise NotImplemented, 'FIXME'
         return self._get_likes(total_desired=total_desired)
 
     def _get_blog_likes(self, blogname, total_desired=None):
+        raise NotImplemented, 'FIXME'
         return self._get_likes(blog_name=blogname,
                                   total_desired=total_desired)
         
     def get_blog_likes(self, blogname, total_desired=None):
+        raise NotImplemented, 'FIXME'
         return self._get_blog_likes(blogname, total_desired=total_desired)
-    
-                
-    
-    def update_posts(self, blogname):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
     

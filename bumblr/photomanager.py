@@ -16,6 +16,10 @@ from bumblr.database import TumblrThumbnailUrlMd5sum
 
 from bumblr.filerepos import FileExistsError, FileRepos
 
+from bumblr.managers.util import chunks, get_md5sum_from_tumblr_headers
+from bumblr.managers.util import get_md5sum_for_file
+from bumblr.managers.util import get_md5sum_with_head_request
+
 MD5CLASSMAP = { TumblrPhotoUrl : TumblrPhotoUrlMd5sum,
                 TumblrThumbnailUrl : TumblrThumbnailUrlMd5sum }
 
@@ -28,40 +32,6 @@ class PhotoExistsError(FileExistsError):
 
 class BadRequestError(Exception):
     pass
-
-def chunks(l, n):
-    """ Yield successive n-sized chunks from l.
-    """
-    for i in xrange(0, len(l), n):
-        yield l[i:i+n]
-
-def get_md5sum_from_tumblr_headers(headers):
-    try:
-        etag = headers['etag'][1:-1]
-        if len(etag) != 32:
-            print "ETAG is nonconforming: %s" % etag
-            return None
-        else:
-            return etag
-    except KeyError:
-        return None
-
-def get_md5sum_for_file(fileobj):
-    m = hashlib.md5()
-    block = fileobj.read(1024)
-    while block:
-        m.update(block)
-        block = fileobj.read(1024)
-    return m.hexdigest()
-
-def get_md5sum_with_head_request(utuple):
-    url, url_id = utuple
-    r = requests.head(url)
-    etag = None
-    if r.ok:
-        etag = get_md5sum_from_tumblr_headers(r.headers)
-    return url_id, r.status_code, etag
-
 
 def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
                          thumb_urls=False):
@@ -107,6 +77,9 @@ def get_md5sums_for_urls(session, objs, chunksize=20, processes=5,
 def download_url(utuple):
     url, url_id, repos = utuple
     if repos.file_exists(url):
+        # FIXME: need better method of doing this
+        # status 777 means local file exists but
+        # remains unverified
         return url_id, 777, None
         #print "File exists for url_id %d" % url_id
         r = requests.head(url)
@@ -456,6 +429,12 @@ class TumblrPhotoManager(object):
         self._update_all_photos(thumbs=False)
 
 
+    def photo_query(self):
+        return self.session.query(TumblrPhotoUrl)
+    
+    def thumbnail_query(self):
+        return self.session.query(TumblrThumbnailUrl)
+    
     def photo_md5sum_query(self):
         return self.session.query(TumblrPhotoUrlMd5sum)
     

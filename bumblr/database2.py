@@ -117,7 +117,9 @@ class BlogPropertyName(Base, SerialBase):
 class Blog(Base, SerialBase):
     __tablename__ = 'bumblr_blogs'
     id = Column(Integer, primary_key=True)
-    
+    info = relationship('BlogInfo', uselist=False, lazy='joined')
+    updated_remote = Column(DateTime)
+    updated_local = Column(DateTime)
     
 class BlogInfo(Base, SerialBase):
     __tablename__ = 'bumblr_blog_info'
@@ -131,9 +133,7 @@ class BlogInfo(Base, SerialBase):
     likes = Column(BigInteger)
     followed = Column(Boolean)
     share_likes = Column(Boolean)
-    updated_remote = Column(DateTime)
-    updated_local = Column(DateTime)
-    
+    updated = Column(Integer)
     ask = Column(Boolean)
     ask_page_title = Column(Unicode(500))
     ask_anon = Column(Boolean)

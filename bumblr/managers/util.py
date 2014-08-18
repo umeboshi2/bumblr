@@ -1,3 +1,4 @@
+import time
 import hashlib
 
 import requests
@@ -36,3 +37,28 @@ def get_md5sum_with_head_request(utuple):
     return url_id, r.status_code, etag
 
 
+def get_rows_in_chunks(query, rowfun, limit, params=None,
+                       total=None,
+                       report=False,
+                       report_interval=1000):
+    if params is None:
+        params = dict()
+    if total is None:
+        total = query.count()
+    count = 0
+    offset = 0
+    rows = query.offset(offset).limit(limit).all()
+    while len(rows):
+        row = rows.pop(0)
+        if rowfun(row, **params) is not None:
+            raise RuntimeError, "row function should return None"
+        count += 1
+        if report and not count % report_interval:
+            msg = '%d rows remaining on %s'
+            print msg % ((total - count), time.ctime())
+        if count == total:
+            break
+        if not len(rows):
+            offset += limit
+            rows = query.offset(offset).limit(limit).all()
+            

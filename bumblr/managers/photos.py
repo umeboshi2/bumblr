@@ -36,18 +36,6 @@ def download_url(utuple):
         # status 777 means local file exists but
         # remains unverified
         return url_id, 777, None
-        #print "File exists for url_id %d" % url_id
-        r = requests.head(url)
-        if r.ok:
-            etag = get_md5sum_from_tumblr_headers(r.headers)
-            lfile = repos.open_file(url)
-            md5sum = get_md5sum_for_file(lfile)
-            if etag != md5sum and etag is not None:
-                print "Bad md5sum found for %s" % url
-                os.remove(repos.filename(url))
-            else:
-                print 'local copy of %s is OK' % url
-                return url_id, 200, etag
     filename = repos.filename(url)
     print "Downloading %s" % url
     r = requests.get(url, stream=True)
@@ -104,8 +92,8 @@ class PhotoManager(BaseManager):
         self.PhotoSize = PhotoSize
         
     def set_local_path(self, dirname):
-        # FIXME: get rid of FileRepos
-        self.repos = FileRepos(dirname)
+        self.repos = UrlRepos(dirname)
+        
 
     def urlquery(self):
         return self.session.query(PhotoUrl)

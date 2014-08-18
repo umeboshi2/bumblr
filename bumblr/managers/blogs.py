@@ -183,7 +183,7 @@ class BlogManager(BaseManager):
     
     def add_blog(self, blog_name):
         bloginfo = self.info.get_remote_blog_info(blog_name)
-        return self.add_blog_object(bloginfo['blog'])
+        return self.add_blog_object(bloginfo)
 
 
     def _update_blog(self, blogobj):
@@ -256,11 +256,12 @@ class BlogManager(BaseManager):
                 print "Skipping", b.info.name
                 
         
-    def update_posts_for_blog(self, name, blog_id=None):
-        if blog_id is None:
-            blog = self.get_by_name(name)
-        else:
-            blog = self.get(blog_id)
+    def update_posts_for_blog(self, name, blog_id=None, blog=None):
+        if blog is None:
+            if blog_id is None:
+                blog = self.get_by_name(name)
+            else:
+                blog = self.get(blog_id)
         if blog is None:
             raise RuntimeError, "No blog named %s" % name
         q = self.session.query(Post).filter_by(blog_name=blog.info.name)
@@ -286,7 +287,11 @@ class BlogManager(BaseManager):
             if not count % 100:
                 remaining = total - count
                 print "%d posts remaining for %s" % (remaining, blog.info.name)
-                
+
+    def update_all_posts(self):
+        for b in self.query():
+            self.update_posts_for_blog(b.info.name, blog=b)
+            
     def _make_blog_directory(self, blogname, blogpath, thumbnails=False):
         raise NotImplemented, 'FIXME'
     def make_blog_directory(self, blogname, blogpath):

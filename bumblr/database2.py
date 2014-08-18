@@ -51,7 +51,10 @@ class SerialBase(object):
             try:
                 pytype = column.type.python_type
             except NotImplementedError:
-                print "NOTIMPLEMENTEDERROR", column, column.type
+                #import pdb ; pdb.set_trace()
+                #print "HELLO NOTIMPLEMENTEDERROR", column, column.type
+                # ignore column
+                continue
             value = getattr(self, name)
             if pytype is datetime:
                 value = value.isoformat()

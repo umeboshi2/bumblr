@@ -16,6 +16,9 @@ from bumblr.filerepos import UrlRepos
 
 from bumblr.managers.base import BaseManager
 
+from bumblr.managers.util import chunks, get_md5sum_from_tumblr_headers
+from bumblr.managers.util import get_md5sum_for_file
+from bumblr.managers.util import get_md5sum_with_head_request
 
 class FileExistsError(Exception):
     pass
@@ -25,6 +28,48 @@ class PhotoExistsError(FileExistsError):
 
 class BadRequestError(Exception):
     pass
+
+def download_url(utuple):
+    url, url_id, repos = utuple
+    if repos.file_exists(url):
+        # FIXME: need better method of doing this
+        # status 777 means local file exists but
+        # remains unverified
+        return url_id, 777, None
+        #print "File exists for url_id %d" % url_id
+        r = requests.head(url)
+        if r.ok:
+            etag = get_md5sum_from_tumblr_headers(r.headers)
+            lfile = repos.open_file(url)
+            md5sum = get_md5sum_for_file(lfile)
+            if etag != md5sum and etag is not None:
+                print "Bad md5sum found for %s" % url
+                os.remove(repos.filename(url))
+            else:
+                print 'local copy of %s is OK' % url
+                return url_id, 200, etag
+    filename = repos.filename(url)
+    print "Downloading %s" % url
+    r = requests.get(url, stream=True)
+    md5sum = None
+    if r.ok:
+        md5 = hashlib.md5()
+        with repos.open_file(url, 'wb') as output:
+            for chunk in r.iter_content(chunk_size=512):
+                output.write(chunk)
+                md5.update(chunk)
+        etag = get_md5sum_from_tumblr_headers(r.headers)
+        md5sum = md5.hexdigest()
+        if md5sum != etag and etag is not None:
+            os.remove(filename)
+            print etag, 'etag'
+            print md5sum, 'md5sum'
+            raise RuntimeError, "Bad checksum with %s" % url
+        elif etag is None:
+            print "checksum of %s is unavailable" % url
+    return url_id, r.status_code, md5sum
+
+        
 
 def get_photo_sizes(photo):
     sizes = dict()
@@ -55,6 +100,8 @@ class PhotoManager(BaseManager):
         self.ignore_gifs = False
         self.get_thumbnail = True
         self.get_orig = False
+        self.PhotoUrl = PhotoUrl
+        self.PhotoSize = PhotoSize
         
     def set_local_path(self, dirname):
         # FIXME: get rid of FileRepos

@@ -14,7 +14,11 @@ class BaseManager(object):
         self.client = None
         self.client_info = None
         self.limit = 20
-        
+
+    def get_engine(self):
+        conn = self.session.connection()
+        return conn.engine
+    
     def query(self):
         return self.session.query(self.model)
     

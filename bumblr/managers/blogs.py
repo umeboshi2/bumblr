@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import random
 
 import transaction
 import requests
@@ -150,6 +151,20 @@ class BlogManager(BaseManager):
     def get_by_property_query(self, propname):
         prop = self.properties.get_by_name(propname)
         
+    def get_blog_posts_query(self, name, blog=None, type=None):
+        if blog is None:
+            blog = self.get_by_name(name)
+        q = self.session.query(Post).join(BlogPost)
+        q = q.filter(BlogPost.blog_id==blog.id)
+        if type is not None:
+            q = q.filter_by(type=type)
+        q = q.order_by(Post.id)
+        return q
+            
+    def get_blog_posts(self, name, offset=0, limit=20, blog=None, type=None):
+        q = self.get_blog_posts_query(name, blog=blog, type=type)
+        q = q.offset(offset).limit(limit)
+        return q.all()
 
     def add_blog_object(self, blog):
         dbobj = self.get_by_name(blog['name'])
@@ -222,7 +237,6 @@ class BlogManager(BaseManager):
             print '%d blogs remaining.' % remaining
 
     def sample_blogs(self, amount, update_first=False):
-        import random
         blogs = self.query().all()
         random.shuffle(blogs)
         for b in blogs:
@@ -273,147 +287,26 @@ class BlogManager(BaseManager):
                 remaining = total - count
                 print "%d posts remaining for %s" % (remaining, blog.info.name)
                 
-    
-class TumblrBlogManager(object):
-    def __init__(self, session):
-        self.session = session
-        self.client = None
-        self.limit = 20
-        self.model = Blog
-        self.posts = TumblrPostManager(self.session)
-        self.properties = PropertyManager(self.session)
-        
-    def get_blog_posts_query(self, name, blog=None, type=None):
-        if blog is None:
-            blog = self.get_by_name(name)
-        q = self.session.query(TumblrPost).join(TumblrBlogPost)
-        q = q.filter(TumblrBlogPost.blog_id==blog.id)
-        if type is not None:
-            q = q.filter_by(type=type)
-        q = q.order_by(TumblrPost.id)
-        return q
-            
-    def get_blog_posts(self, name, offset=0, limit=20, blog=None, type=None):
-        q = self.get_blog_posts_query(name, blog=blog, type=type)
-        q = q.offset(offset).limit(limit)
-        return q.all()
-
+    def _make_blog_directory(self, blogname, blogpath, thumbnails=False):
+        raise NotImplemented, 'FIXME'
+    def make_blog_directory(self, blogname, blogpath):
+        raise NotImplemented, 'FIXME'
+        self._make_blog_directory(blogname, blogpath, thumbnails=False)
+    def sample_blog_likes(self, amount):
+        raise NotImplemented, 'FIXME'
     def get_post_photos(self, post_id, thumbs=False):
+        raise NotImplemented, 'FIXME'
         return self.posts.get_post_photos(post_id, thumbs=thumbs)
-
     def get_post_photos_and_paths(self, post_id, thumbs=False):
+        raise NotImplemented, 'FIXME'
         photos = self.get_post_photos(post_id, thumbs=thumbs)
         repos = self.posts.photos.repos
         for photo in photos:
             basename = os.path.basename(photo.url)
             photo.filename = repos.filename(basename)
         return photos
-    
-    
-    def update_posts_for_blog(self, name, blog_id=None):
-        if blog_id is None:
-            blog = self.get_by_name(name)
-        else:
-            blog = self.get(blog_id)
-        if blog is None:
-            raise RuntimeError, "No blog named %s" % name
-        
-                        
-        q = self.session.query(TumblrPost).filter_by(blog_name=blog.name)
-        #blogposts = self.session.query(TumblrBlogPost.post_id)
-        #blogposts = blogposts.filter_by(blog_id=blog.id)
-        #blogposts = blogposts.subquery('blogposts')
-        #q = q.filter(not_(TumblrPost.id.in_(blogposts)))
-        stmt = ~exists().where(TumblrBlogPost.post_id==TumblrPost.id)
-        q = q.filter(stmt)
-
-        posts = q.all()
-        total = len(posts)
-        print "total", total
-        count = 0
-        if not total:
-            print "Nothing to update for", blog.name
-        for post in posts:
-            tbp = self.session.query(TumblrBlogPost).get((blog.id, post.id))
-            count += 1
-            if tbp is None:
-                with transaction.manager:
-                    tbp = TumblrBlogPost()
-                    tbp.blog_id = blog.id
-                    tbp.post_id = post.id
-                    self.session.add(tbp)
-                    #print "Added %d for %s." % (post.id, blog.name)
-            if not count % 100:
-                remaining = total - count
-                print "%d posts remaining for %s" % (remaining, blog.name)
-                
-    def get_followed_blogs(self):
-        if self.client is None:
-            raise RuntimeError, "Need to set client"
-        offset = 0
-        limit = self.limit
-        blogs = self.client.following(offset=offset, limit=limit)
-        total_blog_count = blogs['total_blogs']
-        current_blogs = blogs['blogs']
-        blog_count = len(current_blogs)
-        for blog in current_blogs:
-            blog_name = blog['name']
-            if self.get_by_name(blog_name) is None:
-                print "Adding %s" % blog_name
-                b = self.add_blog(blog_name)
-                if b is not None:
-                    self.properties.tag_blog(b.id, 'followed')
-        while len(current_blogs):
-            offset += limit
-            blogs = self.client.following(offset=offset, limit=limit)
-            current_blogs = blogs['blogs']
-            for blog in current_blogs:
-                blog_name = blog['name']
-                if self.get_by_name(blog_name) is None:
-                    print "Adding %s" % blog_name
-                    b = self.add_blog(blog_name)
-                    if b is not None:
-                        self.properties.tag_blog(b.id, 'followed')
-            blog_count += len(current_blogs)
-            remaining = total_blog_count - blog_count
-            print '%d blogs remaining.' % remaining
-
-    def sample_blogs(self, amount, update_first=False):
-        import random
-        blogs = self._query().all()
-        random.shuffle(blogs)
-        for b in blogs:
-            if update_first:
-                print "updating posts for %s" % b.name
-                self.update_posts_for_blog('ignore', blog_id=b.id)
-            info = self._get_blog_info(b.name)
-            if info is not None:
-                info = info['blog']
-            else:
-                continue
-            newb = self.update_blog_object(b.id, info)
-            if newb is not None:
-                b = newb
-                print "Blog %s updated" % b.name
-                q = self.session.query(TumblrBlogPost)
-                q = q.filter_by(blog_id=b.id)
-                print "sampling %d posts from %s" % (amount, b.name)
-                self.posts.get_all_posts(b.name, amount, blog_id=b.id)
-                self.update_posts_for_blog('ignore', blog_id=b.id)
-            else:
-                print "Skipping", b.name
-                
-        
-        
-    def sample_blog_likes(self, amount):
-        import random
-        blogs = self._query().all()
-        random.shuffle(blogs)
-        for b in blogs:
-            print "sampling %d likes from %s" % (amount, b.name)
-            self.posts.get_blog_likes(b.name, amount)
-
     def _photoquery(self, post_id, thumbnails=False):
+        raise NotImplemented, 'FIXME'
         urlmodel = TumblrPhotoUrl
         postmodel = TumblrPostPhoto
         if thumbnails:
@@ -421,50 +314,17 @@ class TumblrBlogManager(object):
             postmodel = TumblrPostThumbnail
         q = self.session.query(urlmodel).join(postmodel)
         return q.filter(postmodel.post_id == post_id)
+    def sample_blog_likes(self, amount):
+        raise NotImplemented, 'FIXME'
+        blogs = self._query().all()
+        random.shuffle(blogs)
+        for b in blogs:
+            print "sampling %d likes from %s" % (amount, b.name)
+            self.posts.get_blog_likes(b.name, amount)
 
 
-    def _make_blog_directory(self, blogname, blogpath, thumbnails=False):
-        blog = self.get_by_name(blogname)
-        if blog is None:
-            raise RuntimeError, "%s doesn't exist." % blogname
-        if not os.path.isdir(blogpath):
-            os.makedirs(blogpath)
-        current_blog_files = os.listdir(blogpath)
-        _bases = [x.split('.')[0] for x in current_blog_files]
-        current_blog_file_ids = [x.split('-')[1] for x in _bases]
-        repos = self.posts.photos.repos
-        q = self.session.query(TumblrPost).join(TumblrBlogPost)
-        q = q.filter(TumblrBlogPost.blog_id == blog.id)
-        q = q.filter(not_(TumblrBlogPost.post_id.in_(current_blog_file_ids)))
-        q = q.order_by(TumblrPost.id)
-        for post in q:
-            if post.type != 'photo':
-                continue
-            photoquery = self._photoquery(post.id, thumbnails=thumbnails)
-            for tpu in photoquery:
-                url = tpu.url
-                basename = os.path.basename(url)
-                if repos.file_exists(basename):
-                    if len(basename.split('.')) == 2:
-                        ext = basename.split('.')[1]
-                    else:
-                        print "WARNING! BAD GUESS", basename
-                        ext = '.jpg'
-                    filebase = '%d-%d.%s' % (post.id, tpu.id, ext)
-                    filename = os.path.join(blogpath, filebase)
-                    #if not os.path.isfile(filename):
-                    if filebase not in current_blog_files:
-                        print "Linking", filename
-                        os.link(repos.filename(basename), filename)
 
 
-    def make_blog_directory(self, blogname, blogpath):
-        self._make_blog_directory(blogname, blogpath, thumbnails=False)
+
         
-                
-    def make_thumb_directory(self, blogname, blogpath):
-        self._make_blog_directory(blogname, blogpath, thumbnails=True)
-
-
-
 dropit = "DROP TABLE bumblr_blog_properties  ; DROP TABLE bumblr_blog_info ; DROP TABLE bumblr_blog_posts  ; DROP TABLE bumblr_liked_posts  ; DROP TABLE bumblr_blogs ;"

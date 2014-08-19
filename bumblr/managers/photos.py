@@ -113,6 +113,7 @@ class PhotoManager(BaseManager):
         # database defaults to false
         if phototype == 'thumb' and self.get_thumbnail:
             pu.keep_local = True
+        pu.filename = self.repos.relname(sizedata['url'])
         self.session.add(pu)
         pu = self.session.merge(pu)
         ps = PhotoSize()

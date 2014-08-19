@@ -8,10 +8,10 @@ from sqlalchemy import not_
 from sqlalchemy import exists
 from sqlalchemy import func
 
-from bumblr.database2 import Blog, BlogInfo
-from bumblr.database2 import BlogProperty, BlogPropertyName
-from bumblr.database2 import DEFAULT_BLOG_PROPERTIES
-from bumblr.database2 import Post, BlogPost
+from bumblr.database import Blog, BlogInfo
+from bumblr.database import BlogProperty, BlogPropertyName
+from bumblr.database import DEFAULT_BLOG_PROPERTIES
+from bumblr.database import Post, BlogPost
 
 
 from bumblr.managers.base import BaseManager
@@ -270,7 +270,7 @@ class BlogManager(BaseManager):
 
         posts = q.all()
         total = len(posts)
-        print "total", total
+        print "total for %s: %d" % (blog.info.name, total)
         count = 0
         if not total:
             print "Nothing to update for", blog.info.name

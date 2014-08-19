@@ -3,12 +3,12 @@ import os
 import transaction
 import requests
 
-from bumblr.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
-from bumblr.database import TumblrLikedPost, TumblrMyLikedPost
-from bumblr.database import TumblrBlogPost
-from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
+from bumblr.db1.database import TumblrPost, TumblrPostPhoto, TumblrPostThumbnail
+from bumblr.db1.database import TumblrLikedPost, TumblrMyLikedPost
+from bumblr.db1.database import TumblrBlogPost
+from bumblr.db1.database import TumblrPhotoUrl, TumblrThumbnailUrl
 
-from bumblr.photomanager import TumblrPhotoManager
+from bumblr.db1.photomanager import TumblrPhotoManager
 
 
 POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',

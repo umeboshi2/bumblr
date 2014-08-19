@@ -3,8 +3,8 @@ import os
 import transaction
 import requests
 
-from bumblr.database2 import Post, PostContent
-from bumblr.database2 import BlogPost
+from bumblr.database import Post, PostContent
+from bumblr.database import BlogPost
 
 from bumblr.managers.base import BaseManager
 from bumblr.managers.photos import PhotoManager

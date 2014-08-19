@@ -3,7 +3,7 @@ import os
 import transaction
 import requests
 
-from bumblr.database import TumblrPost
+from bumblr.db1.database import TumblrPost
 
 POSTKEYS = ['id', 'blog_name', 'post_url', 'type', 'timestamp',
             'date', 'format', 'liked']

@@ -9,7 +9,7 @@ import requests
 from sqlalchemy import not_
 from sqlalchemy import exists
 
-from bumblr.database2 import Photo, PhotoUrl, PhotoSize
+from bumblr.database import Photo, PhotoUrl, PhotoSize
 
 from bumblr.filerepos import FileExistsError, FileRepos
 from bumblr.filerepos import UrlRepos

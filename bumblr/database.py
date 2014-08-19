@@ -31,7 +31,13 @@ def compile_query(query):
         params[k] = sqlescape(v)
     return (comp.string.encode(enc) % params).decode(enc)
 
-    
+
+# orig is original size
+# thumb is width 100
+# smallsquare is width 75, height 75
+# alt is all other sizes for photo
+PhotoType = Enum('orig', 'alt', 'thumb', 'smallsquare',
+                 name='tumblr_photo_type_enum')
 
 Base = declarative_base()
 
@@ -45,7 +51,10 @@ class SerialBase(object):
             try:
                 pytype = column.type.python_type
             except NotImplementedError:
-                print "NOTIMPLEMENTEDERROR", column, column.type
+                #import pdb ; pdb.set_trace()
+                #print "HELLO NOTIMPLEMENTEDERROR", column, column.type
+                # ignore column
+                continue
             value = getattr(self, name)
             if pytype is datetime:
                 value = value.isoformat()
@@ -70,6 +79,17 @@ _overthis = [
     'overonehundred']
 
 
+
+# properties
+# source denotes blog with high source content
+# followed denotes blog followed on client account
+# follower denotes account following client account's blog
+# liked_by_followed denotes blog followed by a 'followed'
+# liked_by_follower denotes blog followed by a 'follower'
+# favorite denotes a blog where posts are kept current
+# ignored denotes a blog where posts are never gathered
+# fulltrack denotes a blog where all posts are archived
+
 DEFAULT_BLOG_PROPERTIES = ['source',
                            'followed',
                            'follower',
@@ -86,33 +106,28 @@ del _overthis
 ####################################
 ## Tables                         ##
 ####################################
-class File(Base):
-    __tablename__ = 'files'
-
-    id = Column(Integer,
-                primary_key=True)
-    http_info = Column(PickleType)
-    content = Column(LargeBinary)
-    link = Column(String)
-
-    def __init__(self):
-        self.id = None
-        self.http_info = None
-        self.content = None
-        self.link = None
-        
-    def __repr__(self):
-        return "<File:  id: %d>" % self.id
-
-class BlogProperty(Base, SerialBase):
+class RowCount(Base, SerialBase):
+    __tablename__ = 'rowcounts'
+    table = Column(String, primary_key=True)
+    total = Column(BigInteger)
+    
+class BlogPropertyName(Base, SerialBase):
     __tablename__ = 'blog_properties'
     id = Column(Integer, primary_key=True)
     name = Column(Unicode(200))
-    
-    
-class TumblrBlog(Base, SerialBase):
-    __tablename__ = 'tumblr_blogs'
+
+
+class Blog(Base, SerialBase):
+    __tablename__ = 'bumblr_blogs'
     id = Column(Integer, primary_key=True)
+    info = relationship('BlogInfo', uselist=False, lazy='joined')
+    updated_remote = Column(DateTime)
+    updated_local = Column(DateTime)
+    
+class BlogInfo(Base, SerialBase):
+    __tablename__ = 'bumblr_blog_info'
+    id = Column(Integer, ForeignKey('bumblr_blogs.id'),
+                primary_key=True)
     name = Column(Unicode(200), unique=True)
     title = Column(Unicode(500))
     url = Column(Unicode(500))
@@ -121,9 +136,7 @@ class TumblrBlog(Base, SerialBase):
     likes = Column(BigInteger)
     followed = Column(Boolean)
     share_likes = Column(Boolean)
-    updated_remote = Column(DateTime)
-    updated_local = Column(DateTime)
-    
+    updated = Column(Integer)
     ask = Column(Boolean)
     ask_page_title = Column(Unicode(500))
     ask_anon = Column(Boolean)
@@ -135,121 +148,85 @@ class TumblrBlog(Base, SerialBase):
     tweet = Column(Unicode)
     twitter_send = Column(Boolean)
     
-class TumblrBlogProperty(Base, SerialBase):
-    __tablename__ = 'tumblr_blog_properties'
-    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
+class BlogProperty(Base, SerialBase):
+    __tablename__ = 'bumblr_blog_properties'
+    blog_id = Column(BigInteger, ForeignKey('bumblr_blogs.id'),
                      primary_key=True)
     property_id = Column(BigInteger, ForeignKey('blog_properties.id'),
                           primary_key=True)
 
-    
-class TumblrPhotoUrl(Base, SerialBase):
-    __tablename__ = 'tumblr_photo_urls'
-    id = Column(Integer, primary_key=True)
-    url = Column(Unicode(500), unique=True)
-    status = Column(Integer)
-
-class TumblrPhotoUrlMd5sum(Base, SerialBase):
-    __tablename__ = 'tumblr_photo_urls_md5sums'
-    id = Column(BigInteger, ForeignKey('tumblr_photo_urls.id'),
-                          primary_key=True)
-    md5sum = Column(String(32))
-
-class TumblrThumbnailUrl(Base, SerialBase):
-    __tablename__ = 'tumblr_thumbnail_photo_urls'
-    id = Column(Integer, primary_key=True)
-    url = Column(Unicode(500), unique=True)
-    status = Column(Integer)
-    
-class TumblrThumbnailUrlMd5sum(Base, SerialBase):
-    __tablename__ = 'tumblr_thumbnail_photo_urls_md5sums'
-    id = Column(BigInteger, ForeignKey('tumblr_thumbnail_photo_urls.id'),
-                          primary_key=True)
-    md5sum = Column(String(32))
-
-class TumblrPost(Base, SerialBase):
-    __tablename__ = 'tumblr_posts'
+class Photo(Base, SerialBase):
+    __tablename__ = 'bumblr_photos'
     id = Column(BigInteger, primary_key=True)
-    blog_name = Column(Unicode(200), index=True)
-    post_url = Column(Unicode(500))
-    type = Column(Unicode(50))
-    timestamp = Column(Integer)
-    date = Column(Unicode(50))
-    format = Column(Unicode(50))
+    caption = Column(Unicode)
+    exif = Column(PickleType)
     
-    source_url = Column(Unicode(500))
-    source_title = Column(Unicode(500))
-    liked = Column(Boolean)
-    content = Column(PickleType)
+class PhotoUrl(Base, SerialBase):
+    __tablename__ = 'bumblr_photo_urls'
+    id = Column(BigInteger, primary_key=True)
+    phototype = Column(PhotoType, index=True)
+    url = Column(Unicode(500), unique=True)
+    width = Column(Integer)
+    height = Column(Integer)
+    md5sum = Column(String(32))
+    request_status = Column(Integer)
+    request_head = Column(PickleType)
+    keep_local = Column(Boolean, default=False)
+    filename = Column(String)
 
-class TumblrBlogPost(Base, SerialBase):
-    __tablename__ = 'tumblr_blog_posts'
-    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
-                     primary_key=True)
-    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
-                     primary_key=True)
-
-class TumblrLikedPost(Base, SerialBase):
-    __tablename__ = 'tumblr_liked_posts'
-    blog_id = Column(BigInteger, ForeignKey('tumblr_blogs.id'),
-                     primary_key=True)
-    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
-                     primary_key=True)
-
-class TumblrMyLikedPost(Base, SerialBase):
-    __tablename__ = 'tumblr_my_liked_posts'
-    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
-                     primary_key=True)
-
-    
-class TumblrPostPhoto(Base, SerialBase):
-    __tablename__ = 'tumblr_post_photos'
-    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
-                     primary_key=True)
-    photo_id = Column(BigInteger, ForeignKey('tumblr_photo_urls.id'),
-                          primary_key=True)
+class PhotoSize(Base, SerialBase):
+    __tablename__ = 'bumblr_photo_sizes'
+    photo_id = Column(BigInteger, ForeignKey('bumblr_photos.id'),
+                      primary_key=True)
+    url_id = Column(BigInteger, ForeignKey('bumblr_photo_urls.id'),
+                    primary_key=True)
     
     
-class TumblrPostThumbnail(Base, SerialBase):
-    __tablename__ = 'tumblr_post_thumbnails'
-    post_id = Column(BigInteger, ForeignKey('tumblr_posts.id'),
-                     primary_key=True)
-    thumb_id = Column(BigInteger, ForeignKey('tumblr_thumbnail_photo_urls.id'),
-                          primary_key=True)
-    
-    
-#######################################################
-# new tables
-#######################################################
-class BumblrPost(SerialBase):
+class Post(Base, SerialBase):
     __tablename__ = 'bumblr_posts'
     id = Column(BigInteger, primary_key=True)
     blog_name = Column(Unicode(200), index=True)
     post_url = Column(Unicode(500))
     type = Column(Unicode(50))
-    timestamp = Column(Integer)
+    timestamp = Column(Integer, index=True)
     date = Column(Unicode(50))
-    format = Column(Unicode(50))
-    
     source_url = Column(Unicode)
     source_title = Column(Unicode)
-    liked = Column(Boolean)
+    liked = Column(Boolean, index=True)
+    followed = Column(Boolean, index=True)
+
+class PostContent(Base, SerialBase):
+    __tablename__ = 'bumblr_post_content'
+    id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
     content = Column(PickleType)
 
-class BumblrPhotoUrl(SerialBase):
-    __tablename__ = 'bumblr_photo_urls'
-    id = Column(Integer, primary_key=True)
-    url = Column(Unicode(500), unique=True)
-    md5sum = Column(String(32))
-    headers = Column(PickleType)
-    status = Column(Integer)
-    is_thumbnail = Column(Boolean)
+class BlogPost(Base, SerialBase):
+    __tablename__ = 'bumblr_blog_posts'
+    blog_id = Column(BigInteger, ForeignKey('bumblr_blogs.id'),
+                     primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
 
-
-class LocalBumblrPhotoUrl(SerialBase):
-    __tablename__ = 'bumblr_local_photo_urls'
-    id = Column(BigInteger, ForeignKey('bumblr_photo_urls.id'),
+class PostPhoto(Base, SerialBase):
+    __tablename__ = 'bumblr_post_photos'
+    post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
+    photo_id = Column(BigInteger, ForeignKey('bumblr_photos.id'),
                           primary_key=True)
+    
+class LikedPost(Base, SerialBase):
+    __tablename__ = 'bumblr_liked_posts'
+    blog_id = Column(BigInteger, ForeignKey('bumblr_blogs.id'),
+                     primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
+
+class MyLikedPost(Base, SerialBase):
+    __tablename__ = 'bumblr_my_liked_posts'
+    post_id = Column(BigInteger, ForeignKey('bumblr_posts.id'),
+                     primary_key=True)
+
     
 
 #######################################################

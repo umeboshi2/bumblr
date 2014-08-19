@@ -9,10 +9,10 @@ import requests
 from sqlalchemy import not_
 from sqlalchemy import exists
 
-from bumblr.database import TumblrPhotoUrl, TumblrThumbnailUrl
-from bumblr.database import TumblrPostPhoto
-from bumblr.database import TumblrPhotoUrlMd5sum
-from bumblr.database import TumblrThumbnailUrlMd5sum
+from bumblr.db1.database import TumblrPhotoUrl, TumblrThumbnailUrl
+from bumblr.db1.database import TumblrPostPhoto
+from bumblr.db1.database import TumblrPhotoUrlMd5sum
+from bumblr.db1.database import TumblrThumbnailUrlMd5sum
 
 from bumblr.filerepos import FileExistsError, FileRepos
 

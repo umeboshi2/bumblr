@@ -7,15 +7,15 @@ from sqlalchemy import not_
 from sqlalchemy import exists
 from sqlalchemy import func
 
-from bumblr.database import TumblrPost, TumblrPostPhoto
-from bumblr.database import TumblrBlog, TumblrBlogPost
-from bumblr.database import TumblrLikedPost, TumblrPhotoUrl
-from bumblr.database import TumblrThumbnailUrl, TumblrPostThumbnail
+from bumblr.db1.database import TumblrPost, TumblrPostPhoto
+from bumblr.db1.database import TumblrBlog, TumblrBlogPost
+from bumblr.db1.database import TumblrLikedPost, TumblrPhotoUrl
+from bumblr.db1.database import TumblrThumbnailUrl, TumblrPostThumbnail
 
-from bumblr.database import BlogProperty, TumblrBlogProperty
-from bumblr.database import DEFAULT_BLOG_PROPERTIES
-from bumblr.database import compile_query
-from bumblr.postmanager import TumblrPostManager
+from bumblr.db1.database import BlogProperty, TumblrBlogProperty
+from bumblr.db1.database import DEFAULT_BLOG_PROPERTIES
+from bumblr.db1.database import compile_query
+from bumblr.db1.postmanager import TumblrPostManager
 
 BLOGKEYS = ['name', 'title', 'url', 'description', 'posts',
             'followed', 'share_likes', 'ask', 'ask_page_title',

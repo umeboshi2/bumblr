@@ -171,7 +171,7 @@ class PhotoUrl(Base, SerialBase):
     md5sum = Column(String(32))
     request_status = Column(Integer)
     request_head = Column(PickleType)
-    keep_local = Column(Boolean, default=False)
+    keep_local = Column(Boolean, default=False, index=True)
     filename = Column(String)
 
 class PhotoSize(Base, SerialBase):

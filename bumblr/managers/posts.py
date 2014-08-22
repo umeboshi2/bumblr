@@ -4,7 +4,7 @@ import transaction
 import requests
 
 from bumblr.database import Post, PostContent
-from bumblr.database import BlogPost
+from bumblr.database import BlogPost, PostPhoto
 
 from bumblr.managers.base import BaseManager
 from bumblr.managers.photos import PhotoManager
@@ -24,9 +24,25 @@ class PostManager(BaseManager):
         return self.query().filter_by(blog_name=name)
     
 
-    def get_post_photos_query(self, post_id, thumbs=False):
-        raise NotImplemented, 'FIXME'
-    
+    def _get_post_pictures_query(self, post_id, phototype):
+        photoclass = self.photos.model
+        urlclass = self.photos.PhotoUrl
+        sizeclass = self.photos.PhotoSize
+        q = self.session.query(urlclass, sizeclass, photoclass)
+        q = q.join(sizeclass).join(photoclass).join(PostPhoto)
+        q = q.filter(PostPhoto.post_id == post_id)
+        q = q.filter(urlclass.phototype == phototype)
+        return q
+        
+    def get_post_thumbs_query(self, post_id):
+        return self._get_post_pictures_query(post_id, 'thumb')
+
+    def get_post_photos_query(self, post_id):
+        return self._get_post_pictures_query(post_id, 'orig')
+
+    def get_post_thumbs(self, post_id):
+        return self.get_post_thumbs_query(post_id).all()
+        
     def get_ranged_posts(self, start, end):
         raise NotImplemented, 'FIXME'
     
@@ -49,7 +65,7 @@ class PostManager(BaseManager):
         p = self.session.merge(p)
         if post['type'] == 'photo':
             for photo in post['photos']:
-                ph = self.photos.add_photo(photo)
+                ph = self.photos.add_photo(p.id, photo)
                 print "photo %d for post %d" % (ph.id, p.id)
         
             

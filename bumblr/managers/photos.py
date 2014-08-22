@@ -10,6 +10,7 @@ from sqlalchemy import not_
 from sqlalchemy import exists
 
 from bumblr.database import Photo, PhotoUrl, PhotoSize
+from bumblr.database import PostPhoto
 
 from bumblr.filerepos import FileExistsError, FileRepos
 from bumblr.filerepos import UrlRepos
@@ -57,7 +58,39 @@ def download_url(utuple):
             print "checksum of %s is unavailable" % url
     return url_id, r.status_code, md5sum
 
-        
+
+def download_urlobjs(session, objs, repos, chunksize=20, processes=5,
+                      ignore_gifs=True, set_keep_local=True):
+    if ignore_gifs:
+        giflist = [o for o in objs if o.url.endswith('.gif')]
+        objs = [o for o in objs if not o.url.endswith('.gif')]
+        with transaction.manager:
+            print "Ignoring %d gifs" % len(giflist)
+            for o in giflist:
+                o.request_status = 600
+                session.add(o)
+    paramlist = [(o.url, o.id, repos) for o in objs]
+    grouped = chunks(paramlist, chunksize)
+    pool = ThreadPool(processes=processes)
+    count = 0
+    total = len(paramlist) / chunksize
+    if len(paramlist) % chunksize:
+        total += 1
+    for group in grouped:
+        output = pool.map(download_url, group)
+        with transaction.manager:
+            model = PhotoUrl
+            for url_id, status, md5sum in output:
+                o = session.query(model).get(url_id)
+                o.request_status = status
+                if set_keep_local and not o.keep_local:
+                    o.keep_local = True
+                if md5sum is not None:
+                    o.md5sum = md5sum
+                session.add(o)
+        count += 1
+        print "Group %d of %d processed." % (count, total)
+                
 
 def get_photo_sizes(photo):
     sizes = dict()
@@ -94,7 +127,6 @@ class PhotoManager(BaseManager):
     def set_local_path(self, dirname):
         self.repos = UrlRepos(dirname)
         
-
     def urlquery(self):
         return self.session.query(PhotoUrl)
 
@@ -120,8 +152,8 @@ class PhotoManager(BaseManager):
         ps.photo_id = photo.id
         ps.url_id = pu.id
         self.session.add(ps)
-            
-    def add_photo(self, photo, altsizes=False):
+
+    def add_photo(self, post_id, photo, altsizes=False):
         sizes = get_photo_sizes(photo)
         with transaction.manager:
             p = self.model()
@@ -130,6 +162,10 @@ class PhotoManager(BaseManager):
                 p.exif = photo['exif']
             self.session.add(p)
             p = self.session.merge(p)
+            pp = PostPhoto()
+            pp.post_id = post_id
+            pp.photo_id = p.id
+            self.session.add(pp)
             for phototype in ['orig', 'thumb', 'smallsquare']:
                 pudata = sizes[phototype]
                 if pudata is not None:
@@ -143,4 +179,15 @@ class PhotoManager(BaseManager):
                     if pu is None:
                         self._add_size(p, 'alt', pudata)
         return self.session.merge(p)
+    
+    def download_photos(self, urls, set_keep_local=True):
+        download_urlobjs(self.session, urls, self.repos,
+                         set_keep_local=set_keep_local)
+
+    def download_all_photos(self):
+        q = self.urlquery().filter_by(keep_local=True)
+        q = q.filter_by(request_status=None)
+        self.download_photos(q.all(), set_keep_local=False)
+        
+    
     

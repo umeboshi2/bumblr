@@ -303,13 +303,8 @@ class BlogManager(BaseManager):
         raise NotImplemented, 'FIXME'
         return self.posts.get_post_photos(post_id, thumbs=thumbs)
     def get_post_photos_and_paths(self, post_id, thumbs=False):
-        raise NotImplemented, 'FIXME'
-        photos = self.get_post_photos(post_id, thumbs=thumbs)
-        repos = self.posts.photos.repos
-        for photo in photos:
-            basename = os.path.basename(photo.url)
-            photo.filename = repos.filename(basename)
-        return photos
+        return self.posts.get_post_thumbs(post_id)
+
     def _photoquery(self, post_id, thumbnails=False):
         raise NotImplemented, 'FIXME'
         urlmodel = TumblrPhotoUrl
@@ -333,3 +328,5 @@ class BlogManager(BaseManager):
 
         
 dropit = "DROP TABLE bumblr_blog_properties  ; DROP TABLE bumblr_blog_info ; DROP TABLE bumblr_blog_posts  ; DROP TABLE bumblr_liked_posts  ; DROP TABLE bumblr_blogs ;"
+blog_post_counts = "SELECT name, posts, count(post_id) from bumblr_blog_info join bumblr_blog_posts on id = blog_id group by name, posts order by name;"
+

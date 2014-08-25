@@ -180,9 +180,11 @@ class PhotoManager(BaseManager):
                         self._add_size(p, 'alt', pudata)
         return self.session.merge(p)
     
-    def download_photos(self, urls, set_keep_local=True):
+    def download_photos(self, urls, set_keep_local=True,
+                        ignore_gifs=True):
         download_urlobjs(self.session, urls, self.repos,
-                         set_keep_local=set_keep_local)
+                         set_keep_local=set_keep_local,
+                         ignore_gifs=ignore_gifs)
 
     def download_all_photos(self):
         q = self.urlquery().filter_by(keep_local=True)
@@ -190,4 +192,9 @@ class PhotoManager(BaseManager):
         self.download_photos(q.all(), set_keep_local=False)
         
     
-    
+    def download_all_thumbs(self):
+        q = self.urlquery().filter_by(keep_local=True)
+        q = q.filter_by(request_status=None)
+        q = q.filter_by(phototype='thumb')
+        self.download_photos(q.all(), set_keep_local=False,
+                             ignore_gifs=False)

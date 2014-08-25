@@ -183,7 +183,8 @@ class BlogManager(BaseManager):
     
     def add_blog(self, blog_name):
         bloginfo = self.info.get_remote_blog_info(blog_name)
-        return self.add_blog_object(bloginfo)
+        if bloginfo is not None:
+            return self.add_blog_object(bloginfo)
 
 
     def _update_blog(self, blogobj):

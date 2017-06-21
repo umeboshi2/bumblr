@@ -65,6 +65,7 @@ class PostManager(BaseManager):
         p = self.session.merge(p)
         if post['type'] == 'photo':
             for photo in post['photos']:
+                #print "PHOTO is", photo
                 ph = self.photos.add_photo(p.id, photo)
                 print "photo %d for post %d" % (ph.id, p.id)
         

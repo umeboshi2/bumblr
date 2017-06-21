@@ -119,7 +119,7 @@ class PhotoManager(BaseManager):
         super(PhotoManager, self).__init__(session, Photo)
         self.repos = None
         self.ignore_gifs = False
-        self.get_thumbnail = True
+        self.get_thumbnail = False
         self.get_orig = False
         self.PhotoUrl = PhotoUrl
         self.PhotoSize = PhotoSize
@@ -196,5 +196,12 @@ class PhotoManager(BaseManager):
         q = self.urlquery().filter_by(keep_local=True)
         q = q.filter_by(request_status=None)
         q = q.filter_by(phototype='thumb')
+        self.download_photos(q.all(), set_keep_local=False,
+                             ignore_gifs=False)
+        
+    def download_all_orig(self):
+        q = self.urlquery().filter_by(keep_local=False)
+        q = q.filter_by(request_status=None)
+        q = q.filter_by(phototype='orig')
         self.download_photos(q.all(), set_keep_local=False,
                              ignore_gifs=False)
